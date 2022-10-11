@@ -1682,7 +1682,7 @@ read_n3_statement(SerdReader* const reader)
   return st;
 }
 
-static void
+void
 skip_until(SerdReader* const reader, const uint8_t byte)
 {
   for (int c = 0; (c = peek_byte(reader)) && c != byte;) {

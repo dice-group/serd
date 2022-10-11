@@ -25,7 +25,7 @@ serd_error(SerdErrorSink error_sink, void* handle, const SerdError* e)
   if (error_sink) {
     error_sink(handle, e);
   } else {
-    fprintf(stderr, "error: %s:%u:%u: ", e->filename, e->line, e->col);
+    fprintf(stderr, "error: %s:%lu:%lu: ", e->filename, e->line, e->col);
     vfprintf(stderr, e->fmt, *e->args);
   }
 }

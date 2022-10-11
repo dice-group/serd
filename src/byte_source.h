@@ -14,8 +14,8 @@
 
 typedef struct {
   const uint8_t* filename;
-  unsigned       line;
-  unsigned       col;
+  uint64_t       line;
+  uint64_t       col;
 } Cursor;
 
 typedef struct {

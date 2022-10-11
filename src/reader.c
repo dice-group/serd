@@ -423,3 +423,9 @@ serd_reader_read_string(SerdReader* const reader, const uint8_t* const utf8)
 
   return st;
 }
+
+void
+serd_reader_skip_error(SerdReader* const reader)
+{
+  skip_until(reader, '\n');
+}

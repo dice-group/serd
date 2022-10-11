@@ -29,6 +29,7 @@ set_target_properties(serd PROPERTIES
         SOVERSION ${PROJECT_VERSION_MAJOR}
         )
 
+target_compile_options(serd PRIVATE -Wall -Wpedantic -Wextra -Wno-nullability-extension)
 
 if (IS_TOP_LEVEL)
     include(cmake/install_library.cmake)
