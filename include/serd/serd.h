@@ -832,6 +832,12 @@ SERD_API
 void
 serd_reader_skip_error(SerdReader* SERD_NONNULL reader);
 
+uint64_t
+serd_reader_get_current_line(SerdReader const* SERD_NONNULL reader);
+
+uint64_t
+serd_reader_get_current_col(SerdReader const* SERD_NONNULL reader);
+
 /// Finish an incremental read from a file handle
 SERD_API
 SerdStatus

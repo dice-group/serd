@@ -429,3 +429,15 @@ serd_reader_skip_error(SerdReader* const reader)
 {
   skip_until(reader, '\n');
 }
+
+uint64_t
+serd_reader_get_current_line(SerdReader const* const reader)
+{
+  return reader->source.cur.line;
+}
+
+uint64_t
+serd_reader_get_current_col(SerdReader const* const reader)
+{
+  return reader->source.cur.col;
+}
