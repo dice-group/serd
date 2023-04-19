@@ -106,9 +106,6 @@ read_nquadsDoc(SerdReader* reader);
 SerdStatus
 read_turtleTrigDoc(SerdReader* reader);
 
-void
-skip_until(SerdReader* reader, uint8_t byte);
-
 static inline int
 peek_byte(SerdReader* reader)
 {

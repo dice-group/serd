@@ -427,7 +427,7 @@ serd_reader_read_string(SerdReader* const reader, const uint8_t* const utf8)
 void
 serd_reader_skip_error(SerdReader* const reader)
 {
-  skip_until(reader, '\n');
+  serd_reader_skip_until_byte(reader, '\n');
 }
 
 uint64_t

@@ -1694,14 +1694,6 @@ read_n3_statement(SerdReader* const reader)
   return st;
 }
 
-void
-skip_until(SerdReader* const reader, const uint8_t byte)
-{
-  for (int c = 0; (c = peek_byte(reader)) && c != byte;) {
-    eat_byte_safe(reader, c);
-  }
-}
-
 SerdStatus
 serd_reader_skip_until_byte(SerdReader* const reader, const uint8_t byte)
 {
