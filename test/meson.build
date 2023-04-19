@@ -1,15 +1,29 @@
-# Copyright 2020-2022 David Robillard <d@drobilla.net>
+# Copyright 2020-2023 David Robillard <d@drobilla.net>
 # SPDX-License-Identifier: 0BSD OR ISC
 
-run_test_suite = files('run_test_suite.py')
-
+run_suite = find_program('run_suite.py')
 wrapper = meson.get_external_property('exe_wrapper', '')
 
-####################
-# Project Metadata #
-####################
+########################
+# Scripts and Metadata #
+########################
 
-if get_option('strict')
+plot_scripts = files(
+  '../scripts/serd_bench.py',
+)
+
+simple_scripts = files(
+  '../scripts/check_formatting.py',
+  'run_suite.py',
+  'serd_test_util/__init__.py',
+  'test_quiet.py',
+  'test_stdin.py',
+  'test_write_error.py',
+)
+
+python_scripts = simple_scripts + plot_scripts
+
+if get_option('lint')
   # Check release metadata
   if not meson.is_subproject()
     autoship = find_program('autoship', required: false)
@@ -21,11 +35,65 @@ if get_option('strict')
   # Check licensing metadata
   reuse = find_program('reuse', required: false)
   if reuse.found()
-    test('REUSE', reuse,
-         args: ['--root', serd_src_root, 'lint'],
-         suite: 'data')
+    test(
+      'REUSE',
+      reuse,
+      args: ['--root', serd_src_root, 'lint'],
+      suite: 'data',
+    )
   endif
+
+  # Check script formatting
+  black = find_program('black', required: false)
+  if black.found()
+    black_opts = ['--check', '-q', '-l', '79']
+    foreach script : python_scripts
+      name = '@0@'.format(script).underscorify()
+      test(name, black, args: black_opts + [script], suite: 'scripts')
+    endforeach
+  endif
+
+  # Check scripts for errors with flake8
+  flake8 = find_program('flake8', required: false)
+  if flake8.found()
+    test('flake8', flake8, args: python_scripts, suite: 'scripts')
+  endif
+
+  # Check scripts for errors with pylint
+  pylint = find_program('pylint', required: false)
+  if pylint.found()
+    pymod = import('python')
+    plot_py = pymod.find_installation(
+      'python3',
+      modules: ['matplotlib'],
+      required: false,
+    )
+
+    pylint_scripts = simple_scripts
+    if plot_py.found()
+      pylint_scripts += plot_scripts
+    endif
+
+    pylint_args = ['--disable', 'bad-option-value']
+    test('pylint', pylint, args: pylint_args + pylint_scripts, suite: 'scripts')
+  endif
+
+  # Check Turtle formatting with serdi
+  foreach ttl_file : ttl_metadata_files
+    test(
+      '@0@'.format(ttl_file).underscorify(),
+      check_formatting_py,
+      args: [ttl_file, serdi, '-o', 'turtle'],
+      suite: 'data',
+    )
+  endforeach
 endif
+
+###################
+# Header Warnings #
+###################
+
+subdir('headers')
 
 ##############
 # Unit Tests #
@@ -35,7 +103,6 @@ unit_tests = [
   'env',
   'free_null',
   'node',
-  'read_chunk',
   'reader_writer',
   'string',
   'uri',
@@ -59,153 +126,202 @@ endforeach
 # System Tests #
 ################
 
-if not get_option('tools').disabled()
-  if wrapper != ''
-    script_args = ['--wrapper', wrapper, '--serdi', serdi.full_path()]
-  else
-    script_args = ['--serdi', serdi.full_path()]
-  endif
+common_script_args = []
+if wrapper != ''
+  common_script_args += ['--wrapper', wrapper]
+endif
 
+simple_command_tests = {
+  'serdi': {
+    'bad': [
+      ['-c'],
+      ['-fi'],
+      ['-i', 'turtle'],
+      ['-i', 'unknown'],
+      ['-i'],
+      ['-o', 'unknown'],
+      ['-o'],
+      ['-p'],
+      ['-r'],
+      ['-z'],
+    ],
+    'good': [
+      ['-h'],
+      ['-s', '<go:>a<go:> .'],
+      ['-v'],
+    ],
+  },
+}
+
+if is_variable('serdi')
+  script_args = common_script_args + ['--serdi', serdi]
   serd_ttl = files('../serd.ttl')[0]
+  bad_input_file = files('extra/bad/bad-base.ttl')
 
-  test('serd.ttl', serdi, args: [serd_ttl], suite: 'data')
+  test('serd_ttl', serdi, args: [serd_ttl], suite: 'data')
 
   # Command line options
 
-  good_args = [
-    ['-v'],
-    ['-h'],
-    ['-s', '<urn:eg:s> a <urn:eg:T> .'],
-  ]
+  cmd_suite = ['serdi', 'options']
 
-  foreach args : good_args
-    test(args[0], serdi, args: args, suite: ['serdi', 'options'])
+  foreach kind, cases : simple_command_tests['serdi']
+    foreach args : cases
+      test(
+        ' '.join(args).substring(1).underscorify(),
+        serdi,
+        args: args,
+        should_fail: kind == 'bad',
+        suite: cmd_suite,
+      )
+    endforeach
   endforeach
 
-  bad_args = [
-    ['/no/such/file'],
-    ['ftp://unsupported.org'],
-    ['-c'],
-    ['-i', 'unknown'],
-    ['-i', 'turtle'],
-    ['-i'],
-    ['-fi'],
-    ['-o', 'unknown'],
-    ['-o'],
-    ['-p'],
-    ['-r'],
-    ['-z'],
-    ['-s', '<foo> a <Bar> .'],
-  ]
+  test('none', serdi, should_fail: true, suite: cmd_suite)
 
-  foreach args : bad_args
-    name = ' '.join(args).underscorify()
-    test(name, serdi,
-         args: args,
-         should_fail: true,
-         suite: ['serdi', 'options'])
-  endforeach
-
-  test('none', serdi, should_fail: true, suite: ['serdi', 'options'])
-
-  test('quiet', files('test_quiet.py'),
-       args: script_args + files('bad/bad-base.ttl'),
-       suite: ['serdi', 'options'])
+  test(
+    'quiet',
+    files('test_quiet.py'),
+    args: script_args + [bad_input_file],
+    suite: cmd_suite,
+  )
 
   # Inputs
 
-  test('stdin', files('test_stdin.py'),
-       args: script_args,
-       suite: ['serdi', 'input'])
+  input_suite = ['serdi', 'input']
 
-  test('string', serdi,
-       args: ['-s', '<foo> a <Bar> .'],
-       should_fail: true,
-       suite: ['serdi', 'input'])
+  bad_input_tests = {
+    'string': ['-s', '<foo> a <Bar> .'],
+    'no_such_file': ['no_such_file'],
+    'remote': ['ftp://example.org/unsupported.ttl'],
+  }
 
-  test('missing', serdi,
-       args: ['-i', 'turtle'],
-       should_fail: true,
-       suite: ['serdi', 'input'])
+  foreach name, args : bad_input_tests
+    test(name, serdi, args: args, should_fail: true, suite: input_suite)
+  endforeach
 
-  test('no_such_file', serdi,
-       args: ['no_such_file'],
-       should_fail: true,
-       suite: ['serdi', 'input'])
-
-  test('remote', serdi,
-       args: ['ftp://example.org/unsupported.ttl'],
-       should_fail: true,
-       suite: ['serdi', 'input'])
+  test('stdin', files('test_stdin.py'), args: script_args, suite: input_suite)
 
   # IO errors
 
-  test('read_dir', serdi,
-       args: ['-e', 'file://@0@/'.format(serd_src_root)],
-       should_fail: true,
-       suite: 'io_errors')
+  io_error_tests = {
+    'read_dir_bulk': [serd_src_root],
+    'read_dir_bytes': ['-e', serd_src_root],
+    'read_dir_uri': ['file://@0@/'.format(serd_src_root)],
+  }
 
-  test('bulk_read_dir', serdi,
-       args: ['file://@0@/'.format(serd_src_root)],
-       should_fail: true,
-       suite: 'io_errors')
-
-  test('write_error', files('test_write_error.py'),
-       args: script_args + [serd_ttl],
-       suite: 'io_errors')
-
-  # RDF test suites
-
-  ## Serd-specific test suites
-
-  serd_suites = ['good', 'bad']
-  serd_base = 'http://drobilla.net/sw/serd/test/'
-
-  ### Run all suites with no special arguments
-  foreach name : serd_suites
-    manifest = files(name / 'manifest.ttl')
-    base_uri = serd_base + name + '/'
-    test(name, run_test_suite,
-         args: script_args + [manifest, base_uri],
-         suite: ['rdf', 'serd'],
-         timeout: 240)
+  foreach name, args : io_error_tests
+    test(name, serdi, args: args, should_fail: true, suite: 'io')
   endforeach
 
-  ### The lax suite is special because it is run twice...
-  lax_manifest = files('lax/manifest.ttl')
-  lax_base_uri = serd_base + name + '/'
+  test(
+    'write_error',
+    files('test_write_error.py'),
+    args: script_args + [serd_ttl],
+    suite: 'io',
+  )
+endif
 
-  ### ... once with strict parsing to test the hard errors
-  test('lax.strict', run_test_suite,
-       args: script_args + [lax_manifest, lax_base_uri],
-       is_parallel: false,
-       suite: ['rdf', 'serd'],
-       timeout: 240)
+###########################
+# Data-Driven Test Suites #
+###########################
 
-  ### ... and once with lax parsing to tolerate them
-  test('lax.lax', run_test_suite,
-       args: script_args + [lax_manifest, lax_base_uri, '--', '-l'],
-       is_parallel: false,
-       suite: ['rdf', 'serd'],
-       timeout: 240)
+ns_serdtest = 'http://drobilla.net/sw/serd/test/'
+ns_w3 = 'http://www.w3.org/2013/'
 
-  ## Standard W3C test suites
+test_suites = {
+  'nquads': [
+    files('w3c/nquads/manifest.ttl'), ns_w3 + 'NQuadsTests/',
+    '--', '-a', '-i', 'NQuads',
+  ],
+  'ntriples': [
+    files('w3c/ntriples/manifest.ttl'), ns_w3 + 'NTriplesTests/',
+    '--', '-a', '-i', 'NTriples',
+  ],
+  'trig': [
+    files('w3c/trig/manifest.ttl'), ns_w3 + 'TriGTests/',
+    '--', '-a', '-i', 'TriG',
+  ],
+  'turtle': [
+    files('w3c/turtle/manifest.ttl'), ns_w3 + 'TurtleTests/',
+    '--', '-a', '-i', 'Turtle',
+  ],
 
-  w3c_suites = ['Turtle', 'NTriples', 'NQuads', 'TriG']
-  w3c_base = 'http://www.w3.org/2013/'
+  'abbreviate': [
+    files('extra/abbreviate/manifest.ttl'), ns_serdtest + 'abbreviate/',
+  ],
+  'bad': [
+    files('extra/bad/manifest.ttl'), ns_serdtest + 'bad/',
+  ],
+  'bad_turtle': [
+    files('extra/bad/manifest.ttl'), ns_serdtest + 'bad/',
+    '--', '-o', 'turtle',
+  ],
+  'big': [
+    files('extra/big/manifest.ttl'), ns_serdtest + 'big/',
+  ],
+  'bulk': [
+    files('extra/good/manifest.ttl'), ns_serdtest + 'good/',
+    '--', '-b',
+  ],
+  'fast': [
+    files('extra/good/manifest.ttl'), ns_serdtest + 'good/',
+    '--', '-f',
+  ],
+  'full': [
+    files('extra/full/manifest.ttl'), ns_serdtest + 'full/',
+    '--', '-f',
+  ],
+  'good': [
+    files('extra/good/manifest.ttl'), ns_serdtest + 'good/',
+  ],
+  'lax_lax': [
+    '--lax',
+    files('extra/lax/manifest.ttl'), ns_serdtest + 'lax/',
+    '--', '-l',
+  ],
+  'lax_strict': [
+    files('extra/lax/manifest.ttl'), ns_serdtest + 'lax/',
+  ],
+  'perfect_forward': [
+    files('extra/perfect/manifest.ttl'), ns_serdtest + 'perfect/',
+  ],
+  'perfect_reverse': [
+    '--reverse',
+    files('extra/perfect/manifest.ttl'), ns_serdtest + 'perfect/',
+  ],
+  'prefix_add': [
+    '--reverse',
+    files('extra/prefix/manifest.ttl'), ns_serdtest + 'prefix/',
+    '--', '-p', 'test',
+  ],
+  'prefix_remove': [
+    files('extra/prefix/manifest.ttl'), ns_serdtest + 'prefix/',
+    '--', '-c', 'test',
+  ],
+  'pretty': [
+    files('extra/pretty/manifest.ttl'), ns_serdtest + 'pretty/',
+  ],
+  'qualify': [
+    files('extra/qualify/manifest.ttl'), ns_serdtest + 'qualify/',
+    '--', '-i', 'turtle', # Just for coverage
+  ],
+  'root': [
+    files('extra/root/manifest.ttl'), ns_serdtest + 'root/',
+    '--', '-r', 'http://example.org/top/root/',
+  ],
+}
 
-  foreach syntax : w3c_suites
-    manifest = files(syntax + 'Tests' / 'manifest.ttl')
-    base_uri = w3c_base + syntax + 'Tests/'
+# Run every test suite with serdi
+if is_variable('serdi')
+  script_args = common_script_args + ['--serdi', serdi]
 
-    args = ['--syntax', syntax, manifest, base_uri]
-    if syntax == 'TriG'
-      args += ['--', '-a']
-    endif
-
-    test(syntax, run_test_suite,
-         args: script_args + args,
-         suite: ['rdf', 'w3c'],
-         timeout: 240)
+  foreach name, args : test_suites
+    test(
+      name,
+      run_suite,
+      args: script_args + args,
+      suite: ['suite'],
+      timeout: 240,
+    )
   endforeach
 endif

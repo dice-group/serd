@@ -1,4 +1,4 @@
-// Copyright 2011-2022 David Robillard <d@drobilla.net>
+// Copyright 2011-2023 David Robillard <d@drobilla.net>
 // SPDX-License-Identifier: ISC
 
 #include "serd_config.h"
@@ -8,7 +8,7 @@
 
 #ifdef _WIN32
 #  ifdef _MSC_VER
-#    define WIN32_LEAN_AND_MEAN 1
+#    define WIN32_LEAN_AND_MEAN
 #  endif
 #  include <fcntl.h>
 #  include <io.h>
@@ -49,7 +49,7 @@ get_syntax(const char* const name)
     }
   }
 
-  SERDI_ERRORF("unknown syntax `%s'\n", name);
+  SERDI_ERRORF("unknown syntax '%s'\n", name);
   return (SerdSyntax)0;
 }
 
@@ -72,7 +72,7 @@ static int
 print_version(void)
 {
   printf("serdi " SERD_VERSION " <http://drobilla.net/software/serd>\n");
-  printf("Copyright 2011-2022 David Robillard <d@drobilla.net>.\n"
+  printf("Copyright 2011-2023 David Robillard <d@drobilla.net>.\n"
          "License ISC: <https://spdx.org/licenses/ISC>.\n"
          "This is free software; you are free to change and redistribute it."
          "\nThere is NO WARRANTY, to the extent permitted by law.\n");
@@ -85,11 +85,11 @@ print_usage(const char* const name, const bool error)
   static const char* const description =
     "Read and write RDF syntax.\n"
     "Use - for INPUT to read from standard input.\n\n"
-    "  -a           Write ASCII output if possible.\n"
-    "  -b           Fast bulk output for large serialisations.\n"
+    "  -a           Write ASCII output.\n"
+    "  -b           Write output in blocks for performance.\n"
     "  -c PREFIX    Chop PREFIX from matching blank node IDs.\n"
     "  -e           Eat input one character at a time.\n"
-    "  -f           Keep full URIs in input (don't qualify).\n"
+    "  -f           Fast and loose URI pass-through.\n"
     "  -h           Display this help and exit.\n"
     "  -i SYNTAX    Input syntax: turtle/ntriples/trig/nquads.\n"
     "  -l           Lax (non-strict) parsing.\n"
@@ -132,7 +132,8 @@ serd_fopen(const char* const path, const char* const mode)
   }
 
 #if USE_POSIX_FADVISE && USE_FILENO
-  posix_fadvise(fileno(fd), 0, 0, POSIX_FADV_SEQUENTIAL | POSIX_FADV_NOREUSE);
+  (void)posix_fadvise(
+    fileno(fd), 0, 0, POSIX_FADV_SEQUENTIAL | POSIX_FADV_NOREUSE);
 #endif
 
   return fd;
@@ -143,9 +144,10 @@ choose_style(const SerdSyntax input_syntax,
              const SerdSyntax output_syntax,
              const bool       ascii,
              const bool       bulk_write,
-             const bool       full_uris)
+             const bool       full_uris,
+             const bool       lax)
 {
-  unsigned output_style = 0u;
+  unsigned output_style = 0U;
   if (output_syntax == SERD_NTRIPLES || ascii) {
     output_style |= SERD_STYLE_ASCII;
   } else if (output_syntax == SERD_TURTLE) {
@@ -163,6 +165,10 @@ choose_style(const SerdSyntax input_syntax,
 
   if (bulk_write) {
     output_style |= SERD_STYLE_BULK;
+  }
+
+  if (!lax) {
+    output_style |= SERD_STYLE_STRICT;
   }
 
   return (SerdStyle)output_style;
@@ -300,8 +306,8 @@ main(int argc, char** argv)
          : SERD_NQUADS);
   }
 
-  const SerdStyle output_style =
-    choose_style(input_syntax, output_syntax, ascii, bulk_write, full_uris);
+  const SerdStyle output_style = choose_style(
+    input_syntax, output_syntax, ascii, bulk_write, full_uris, lax);
 
   SerdURI  base_uri = SERD_URI_NULL;
   SerdNode base     = SERD_NODE_NULL;

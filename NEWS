@@ -1,8 +1,33 @@
-serd (0.30.17) unstable; urgency=medium
+serd (0.31.3) unstable; urgency=medium
 
+  * Add Windows path separator support to serd_node_new_file_uri()
+  * Add serd_reader_skip_until_byte() to public API
+  * Allow SERD_API to be defined by the user
+  * Avoid creating test files in the current directory
+  * Avoid using ASCII grave as a quote
+  * Check for POSIX features with the build system
+  * Clean up and improve test suite
+  * Clean up code
+  * Fix crash when trying to read chunks without starting
+  * Fix hang when skipping an error at EOF when lax parsing
+  * Fix incorrect parsing of strange quote escape patterns
+  * Fix possible hang when writing nested Turtle lists
+  * Fix potential memory leaks when a write is aborted
+  * Fix relative URI creation
+  * Gracefully handle bad characters in Turtle blank node syntax
+  * Gracefully handle bad characters in Turtle datatype syntax
+  * Improve TriG pretty-printing and remove trailing newlines
+  * Improve pretty-printing of lists and inline subjects
+  * Improve serdi man page
+  * Improve writer error handling
+  * Make URI writing stricter by default
   * Override pkg-config dependency within meson
+  * Remove support for writing Turtle named inline nodes extension
+  * Replace duplicated dox_to_sphinx script with sphinxygen dependency
+  * Test header for warnings more strictly
+  * Update standard test suites
 
- -- David Robillard <d@drobilla.net>  Fri, 07 Oct 2022 17:20:42 +0000
+ -- David Robillard <d@drobilla.net>  Mon, 03 Apr 2023 14:48:40 +0000
 
 serd (0.30.16) stable; urgency=medium
 
