@@ -1,9 +1,10 @@
-// Copyright 2011-2020 David Robillard <d@drobilla.net>
+// Copyright 2011-2023 David Robillard <d@drobilla.net>
 // SPDX-License-Identifier: ISC
 
-#ifndef SERD_READER_H
-#define SERD_READER_H
+#ifndef SERD_SRC_READER_H
+#define SERD_SRC_READER_H
 
+#include "attributes.h"
 #include "byte_source.h"
 #include "stack.h"
 
@@ -13,12 +14,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-
-#if defined(__GNUC__)
-#  define SERD_LOG_FUNC(fmt, arg1) __attribute__((format(printf, fmt, arg1)))
-#else
-#  define SERD_LOG_FUNC(fmt, arg1)
-#endif
 
 #ifdef SERD_STACK_CHECK
 #  define SERD_STACK_ASSERT_TOP(reader, ref) \
@@ -106,6 +101,9 @@ SerdStatus
 read_n3_statement(SerdReader* reader);
 
 SerdStatus
+read_nquads_statement(SerdReader* reader);
+
+SerdStatus
 read_nquadsDoc(SerdReader* reader);
 
 SerdStatus
@@ -122,24 +120,33 @@ peek_byte(SerdReader* reader)
   return source->eof ? EOF : (int)source->read_buf[source->read_head];
 }
 
-static inline int
+static inline SerdStatus
+skip_byte(SerdReader* reader, const int byte)
+{
+  (void)byte;
+
+  assert(peek_byte(reader) == byte);
+
+  return serd_byte_source_advance(&reader->source);
+}
+
+static inline int SERD_NODISCARD
 eat_byte_safe(SerdReader* reader, const int byte)
 {
   (void)byte;
 
-  const int c = peek_byte(reader);
-  assert(c == byte);
+  assert(peek_byte(reader) == byte);
 
   serd_byte_source_advance(&reader->source);
-  return c;
+  return byte;
 }
 
-static inline int
+static inline int SERD_NODISCARD
 eat_byte_check(SerdReader* reader, const int byte)
 {
   const int c = peek_byte(reader);
   if (c != byte) {
-    r_err(reader, SERD_ERR_BAD_SYNTAX, "expected `%c', not `%c'\n", byte, c);
+    r_err(reader, SERD_ERR_BAD_SYNTAX, "expected '%c', not '%c'\n", byte, c);
     return 0;
   }
   return eat_byte_safe(reader, byte);
@@ -183,4 +190,4 @@ push_bytes(SerdReader* reader, Ref ref, const uint8_t* bytes, unsigned len)
   }
 }
 
-#endif // SERD_READER_H
+#endif // SERD_SRC_READER_H

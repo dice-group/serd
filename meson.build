@@ -1,15 +1,20 @@
-# Copyright 2021-2022 David Robillard <d@drobilla.net>
+# Copyright 2021-2023 David Robillard <d@drobilla.net>
 # SPDX-License-Identifier: 0BSD OR ISC
 
-project('serd', ['c'],
-        version: '0.30.17',
-        license: 'ISC',
-        meson_version: '>= 0.56.0',
-        default_options: [
-          'b_ndebug=if-release',
-          'buildtype=release',
-          'c_std=c99',
-        ])
+project(
+  'serd',
+  ['c'],
+  default_options: [
+    'b_ndebug=if-release',
+    'buildtype=release',
+    'c_std=c99',
+    'c_winlibs=[]',
+    'warning_level=3',
+  ],
+  license: 'ISC',
+  meson_version: '>= 0.56.0',
+  version: '0.31.5',
+)
 
 serd_src_root = meson.current_source_dir()
 major_version = meson.project_version().split('.')[0]
@@ -25,9 +30,6 @@ pkg = import('pkgconfig')
 cc = meson.get_compiler('c')
 
 # Set global warning flags
-if get_option('strict') and not meson.is_subproject()
-  subdir('meson/warnings')
-endif
 subdir('meson/suppressions')
 
 ################
@@ -40,11 +42,56 @@ m_dep = cc.find_library('m', required: false)
 # Platform Configuration #
 ##########################
 
-platform_args = []
-if host_machine.system() in ['gnu', 'linux']
-  platform_args += [
-    '-D_POSIX_C_SOURCE=200809L',
-  ]
+# Use versioned name everywhere to support parallel major version installations
+if host_machine.system() == 'windows'
+  if get_option('default_library') == 'both'
+    error('default_library=both is not supported on Windows')
+  endif
+  soversion = ''
+else
+  soversion = meson.project_version().split('.')[0]
+endif
+
+# Request POSIX APIs from standard headers if necessary
+system_c_args = []
+if host_machine.system() in ['cygwin', 'gnu', 'linux']
+  system_c_args += ['-D_POSIX_C_SOURCE=200809L']
+endif
+
+# Build platform-specific configuration arguments
+platform_c_args = []
+if get_option('checks').disabled()
+  # Generic build without platform-specific features
+  platform_c_args += ['-DSERD_NO_DEFAULT_CONFIG']
+elif get_option('checks').auto()
+  # Statically detect configuration from the build environment
+  platform_c_args += system_c_args
+else
+  # Only use the features detected by the build system
+  platform_c_args += ['-DSERD_NO_DEFAULT_CONFIG'] + system_c_args
+
+  # Define HAVE_SOMETHING symbols for all detected features
+  template = '#include <@0@>\nint main(void) { @1@; }'
+  if cc.links(
+    template.format('stdio.h', 'return fileno(stdin);'),
+    args: system_c_args,
+    name: 'fileno')
+    platform_c_args += ['-DHAVE_FILENO']
+  endif
+  if cc.links(
+    template.format('fcntl.h',
+                    'posix_fadvise(0, 0, 4096, POSIX_FADV_SEQUENTIAL)'),
+    args: system_c_args,
+    name: 'posix_fadvise')
+    platform_c_args += ['-DHAVE_POSIX_FADVISE']
+  endif
+  if cc.links(
+    template.format('stdlib.h',
+                    'void* mem=NULL; posix_memalign(&mem, 8U, 8U);'),
+    args: system_c_args,
+    name: 'posix_memalign')
+    platform_c_args += ['-DHAVE_POSIX_MEMALIGN']
+  endif
 endif
 
 ###########
@@ -72,23 +119,23 @@ sources = files(
 
 # Set appropriate arguments for building against the library type
 extra_c_args = []
-subdir('meson/library')
 if get_option('default_library') == 'static'
   extra_c_args = ['-DSERD_STATIC']
 endif
 
 # Build shared and/or static library
 libserd = library(
-  meson.project_name() + library_suffix,
+  versioned_name,
   sources,
-  c_args: c_suppressions + extra_c_args + platform_args + [
+  c_args: [
     '-DSERD_INTERNAL',
     '-DSERD_VERSION="@0@"'.format(meson.project_version()),
-  ],
+  ] + c_suppressions + extra_c_args + platform_c_args,
   dependencies: m_dep,
   gnu_symbol_visibility: 'hidden',
   include_directories: include_dirs,
   install: true,
+  soversion: soversion,
   version: meson.project_version(),
 )
 
@@ -130,7 +177,7 @@ if not get_option('tools').disabled()
   serdi = executable(
     'serdi',
     files('src/serdi.c'),
-    c_args: c_suppressions + platform_args,
+    c_args: c_suppressions + platform_c_args,
     dependencies: serd_dep,
     install: true,
     link_args: tool_link_args,
@@ -143,9 +190,56 @@ if not get_option('tools').disabled()
   endif
 endif
 
+# Display top-level summary (before subdirectories to appear first)
+if not meson.is_subproject()
+  summary(
+    {
+      'Tests': not get_option('tests').disabled(),
+      'Tools': not get_option('tools').disabled(),
+    },
+    bool_yn: true,
+    section: 'Components',
+  )
+
+  summary(
+    {
+      'Install prefix':  get_option('prefix'),
+      'Headers':  get_option('prefix') / get_option('includedir'),
+      'Libraries':  get_option('prefix') / get_option('libdir'),
+    },
+    section: 'Directories',
+  )
+
+  if not get_option('tools').disabled()
+    summary(
+      {
+        'Executables': get_option('prefix') / get_option('bindir'),
+        'Man pages': get_option('prefix') / get_option('mandir'),
+      },
+      section: 'Directories',
+    )
+  endif
+endif
+
 ###########
 # Support #
 ###########
+
+ttl_metadata_files = files(
+  'serd.ttl',
+  'test/extra/abbreviate/manifest.ttl',
+  'test/extra/bad/manifest.ttl',
+  'test/extra/big/manifest.ttl',
+  'test/extra/good/manifest.ttl',
+  'test/extra/lax/manifest.ttl',
+  'test/extra/perfect/manifest.ttl',
+  'test/extra/prefix/manifest.ttl',
+  'test/extra/pretty/manifest.ttl',
+  'test/extra/qualify/manifest.ttl',
+  'test/extra/root/manifest.ttl',
+)
+
+subdir('scripts')
 
 if not get_option('tests').disabled()
   subdir('test')
@@ -153,19 +247,4 @@ endif
 
 if not get_option('docs').disabled()
   subdir('doc')
-endif
-
-if not meson.is_subproject()
-  summary('Tests', not get_option('tests').disabled(), bool_yn: true)
-  summary('Tools', not get_option('tools').disabled(), bool_yn: true)
-
-  summary('Install prefix', get_option('prefix'))
-
-  summary('Headers', get_option('prefix') / get_option('includedir'))
-  summary('Libraries', get_option('prefix') / get_option('libdir'))
-
-  if not get_option('tools').disabled()
-    summary('Executables', get_option('prefix') / get_option('bindir'))
-    summary('Man pages', get_option('prefix') / get_option('mandir'))
-  endif
 endif

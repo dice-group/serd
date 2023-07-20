@@ -2,25 +2,18 @@
 # SPDX-License-Identifier: 0BSD OR ISC
 
 Checks: >
-  *,
   -*-magic-numbers,
-  -*-uppercase-literal-suffix,
-  -altera-*,
-  -bugprone-branch-clone,
   -bugprone-easily-swappable-parameters,
-  -bugprone-reserved-identifier,
-  -bugprone-suspicious-string-compare,
   -cert-err33-c,
   -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  -clang-analyzer-valist.Uninitialized,
+  -clang-diagnostic-unused-function,
   -concurrency-mt-unsafe,
   -google-readability-todo,
   -hicpp-multiway-paths-covered,
   -hicpp-signed-bitwise,
   -llvm-header-guard,
-  -llvmlibc-*,
   -misc-no-recursion,
+  -modernize-macro-to-enum,
   -readability-function-cognitive-complexity,
-  -readability-identifier-length,
-WarningsAsErrors: '*'
-HeaderFilterRegex: '.*'
-FormatStyle: file
+InheritParentConfig: true

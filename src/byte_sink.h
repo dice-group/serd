@@ -1,8 +1,8 @@
-// Copyright 2011-2020 David Robillard <d@drobilla.net>
+// Copyright 2011-2023 David Robillard <d@drobilla.net>
 // SPDX-License-Identifier: ISC
 
-#ifndef SERD_BYTE_SINK_H
-#define SERD_BYTE_SINK_H
+#ifndef SERD_SRC_BYTE_SINK_H
+#define SERD_SRC_BYTE_SINK_H
 
 #include "serd_internal.h"
 #include "system.h"
@@ -33,13 +33,18 @@ serd_byte_sink_new(SerdSink sink, void* stream, size_t block_size)
   return bsink;
 }
 
-static inline void
+static inline SerdStatus
 serd_byte_sink_flush(SerdByteSink* bsink)
 {
   if (bsink->block_size > 1 && bsink->size > 0) {
-    bsink->sink(bsink->buf, bsink->size, bsink->stream);
-    bsink->size = 0;
+    const size_t size  = bsink->size;
+    const size_t n_out = bsink->sink(bsink->buf, size, bsink->stream);
+    bsink->size        = 0;
+
+    return (n_out != size) ? SERD_ERR_BAD_WRITE : SERD_SUCCESS;
   }
+
+  return SERD_SUCCESS;
 }
 
 static inline void
@@ -82,4 +87,4 @@ serd_byte_sink_write(const void* buf, size_t len, SerdByteSink* bsink)
   return orig_len;
 }
 
-#endif // SERD_BYTE_SINK_H
+#endif // SERD_SRC_BYTE_SINK_H

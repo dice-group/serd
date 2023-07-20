@@ -37,6 +37,10 @@ serd_strerror(const SerdStatus status)
     return (const uint8_t*)"Invalid CURIE";
   case SERD_ERR_INTERNAL:
     return (const uint8_t*)"Internal error";
+  case SERD_ERR_BAD_WRITE:
+    return (const uint8_t*)"Error writing to file/stream";
+  case SERD_ERR_BAD_TEXT:
+    return (const uint8_t*)"Invalid text encoding";
   }
   return (const uint8_t*)"Unknown error"; // never reached
 }

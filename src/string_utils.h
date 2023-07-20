@@ -1,8 +1,8 @@
-// Copyright 2011-2020 David Robillard <d@drobilla.net>
+// Copyright 2011-2023 David Robillard <d@drobilla.net>
 // SPDX-License-Identifier: ISC
 
-#ifndef SERD_STRING_UTILS_H
-#define SERD_STRING_UTILS_H
+#ifndef SERD_SRC_STRING_UTILS_H
+#define SERD_SRC_STRING_UTILS_H
 
 #include "serd/serd.h"
 
@@ -34,14 +34,14 @@ is_digit(const int c)
   return in_range(c, '0', '9');
 }
 
-/* RFC2234: HEXDIG ::= DIGIT / "A" / "B" / "C" / "D" / "E" / "F" */
+/** RFC2234: HEXDIG ::= DIGIT / "A" / "B" / "C" / "D" / "E" / "F" */
 static inline bool
 is_hexdig(const int c)
 {
   return is_digit(c) || in_range(c, 'A', 'F');
 }
 
-/* Turtle / JSON / C: XDIGIT ::= DIGIT / A-F / a-f */
+/** Turtle / JSON / C: XDIGIT ::= DIGIT / A-F / a-f */
 static inline bool
 is_xdigit(const int c)
 {
@@ -89,6 +89,12 @@ serd_substrlen(const uint8_t* str,
                size_t*        n_bytes,
                SerdNodeFlags* flags);
 
+static inline uint8_t
+hex_digit_value(const uint8_t c)
+{
+  return (uint8_t)((c > '9') ? ((c & ~0x20) - 'A' + 10) : (c - '0'));
+}
+
 static inline char
 serd_to_upper(const char c)
 {
@@ -110,51 +116,20 @@ serd_strncasecmp(const char* s1, const char* s2, size_t n)
 static inline uint32_t
 utf8_num_bytes(const uint8_t leading)
 {
-  static const uint8_t lengths[32] = {
-    1u, // 00000xxx
-    1u, // 00001xxx
-    1u, // 00010xxx
-    1u, // 00011xxx
-    1u, // 00100xxx
-    1u, // 00101xxx
-    1u, // 00110xxx
-    1u, // 00111xxx
-    1u, // 01000xxx
-    1u, // 01001xxx
-    1u, // 01010xxx
-    1u, // 01011xxx
-    1u, // 01100xxx
-    1u, // 01101xxx
-    1u, // 01110xxx
-    1u, // 01111xxx
-    0u, // 10000xxx
-    0u, // 10001xxx
-    0u, // 10010xxx
-    0u, // 10011xxx
-    0u, // 10100xxx
-    0u, // 10101xxx
-    0u, // 10110xxx
-    0u, // 10111xxx
-    2u, // 11000xxx
-    2u, // 11001xxx
-    2u, // 11010xxx
-    2u, // 11011xxx
-    3u, // 11100xxx
-    3u, // 11101xxx
-    4u, // 11110xxx
-    0u  // 11111xxx
-  };
-
-  return lengths[leading >> 3u];
+  return ((leading & 0x80U) == 0x00U)   ? 1U  // Starts with `0'
+         : ((leading & 0xE0U) == 0xC0U) ? 2U  // Starts with `110'
+         : ((leading & 0xF0U) == 0xE0U) ? 3U  // Starts with `1110'
+         : ((leading & 0xF8U) == 0xF0U) ? 4U  // Starts with `11110'
+                                        : 0U; // Invalid
 }
 
 /// Return the code point of a UTF-8 character with known length
 static inline uint32_t
 parse_counted_utf8_char(const uint8_t* utf8, size_t size)
 {
-  uint32_t c = utf8[0] & ((1u << (8u - size)) - 1u);
+  uint32_t c = utf8[0] & ((1U << (8U - size)) - 1U);
   for (size_t i = 1; i < size; ++i) {
-    c = (c << 6) | (utf8[i] & 0x3Fu);
+    c = (c << 6) | (utf8[i] & 0x3FU);
   }
   return c;
 }
@@ -171,8 +146,8 @@ parse_utf8_char(const uint8_t* utf8, size_t* size)
     return parse_counted_utf8_char(utf8, *size);
   default:
     *size = 0;
-    return 0u;
+    return 0U;
   }
 }
 
-#endif // SERD_STRING_UTILS_H
+#endif // SERD_SRC_STRING_UTILS_H

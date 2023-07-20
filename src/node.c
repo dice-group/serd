@@ -1,4 +1,4 @@
-// Copyright 2011-2020 David Robillard <d@drobilla.net>
+// Copyright 2011-2023 David Robillard <d@drobilla.net>
 // SPDX-License-Identifier: ISC
 
 #include "node.h"
@@ -36,13 +36,13 @@ serd_uri_string_length(const SerdURI* const uri)
     len += (field).len + (n_delims); \
   }
 
-  ADD_LEN(uri->path, 1)      // + possible leading `/'
-  ADD_LEN(uri->scheme, 1)    // + trailing `:'
-  ADD_LEN(uri->authority, 2) // + leading `//'
-  ADD_LEN(uri->query, 1)     // + leading `?'
-  ADD_LEN(uri->fragment, 1)  // + leading `#'
+  ADD_LEN(uri->path, 1)      // + possible leading '/'
+  ADD_LEN(uri->scheme, 1)    // + trailing ':'
+  ADD_LEN(uri->authority, 2) // + leading '//'
+  ADD_LEN(uri->query, 1)     // + leading '?'
+  ADD_LEN(uri->fragment, 1)  // + leading '#'
 
-  return len + 2; // + 2 for authority `//'
+  return len + 2; // + 2 for authority '//'
 }
 
 static size_t
@@ -170,6 +170,16 @@ is_uri_path_char(const uint8_t c)
   }
 }
 
+static bool
+is_dir_sep(const char c)
+{
+#ifdef _WIN32
+  return c == '\\' || c == '/';
+#else
+  return c == '/';
+#endif
+}
+
 SerdNode
 serd_node_new_file_uri(const uint8_t* const path,
                        const uint8_t* const hostname,
@@ -182,7 +192,7 @@ serd_node_new_file_uri(const uint8_t* const path,
   size_t       uri_len      = 0;
   uint8_t*     uri          = NULL;
 
-  if (path[0] == '/' || is_windows) {
+  if (is_dir_sep((char)path[0]) || is_windows) {
     uri_len = strlen("file://") + hostname_len + is_windows;
     uri     = (uint8_t*)calloc(uri_len + 1, 1);
 
@@ -199,12 +209,14 @@ serd_node_new_file_uri(const uint8_t* const path,
 
   SerdChunk chunk = {uri, uri_len};
   for (size_t i = 0; i < path_len; ++i) {
-    if (is_windows && path[i] == '\\') {
-      serd_chunk_sink("/", 1, &chunk);
-    } else if (path[i] == '%') {
+    if (path[i] == '%') {
       serd_chunk_sink("%%", 2, &chunk);
     } else if (!escape || is_uri_path_char(path[i])) {
       serd_chunk_sink(path + i, 1, &chunk);
+#ifdef _WIN32
+    } else if (path[i] == '\\') {
+      serd_chunk_sink("/", 1, &chunk);
+#endif
     } else {
       char escape_str[4] = {'%', 0, 0, 0};
       snprintf(escape_str + 1, sizeof(escape_str) - 1, "%X", (unsigned)path[i]);
@@ -212,13 +224,13 @@ serd_node_new_file_uri(const uint8_t* const path,
     }
   }
 
-  serd_chunk_sink_finish(&chunk);
+  const uint8_t* const string = serd_chunk_sink_finish(&chunk);
 
-  if (out) {
-    serd_uri_parse(chunk.buf, out);
+  if (string && out) {
+    serd_uri_parse(string, out);
   }
 
-  return serd_node_from_substring(SERD_URI, chunk.buf, chunk.len);
+  return serd_node_from_substring(SERD_URI, string, chunk.len);
 }
 
 SerdNode
@@ -323,7 +335,7 @@ serd_node_new_decimal(const double d, const unsigned frac_digits)
     for (; i < frac_digits - 1 && !(frac % 10); ++i, --s, frac /= 10) {
     }
 
-    node.n_bytes = node.n_chars = (size_t)(s - buf) + 1u;
+    node.n_bytes = node.n_chars = (size_t)(s - buf) + 1U;
 
     // Write digits from last trailing zero to decimal point
     for (; i < frac_digits; ++i) {
@@ -338,7 +350,7 @@ serd_node_new_decimal(const double d, const unsigned frac_digits)
 SerdNode
 serd_node_new_integer(const int64_t i)
 {
-  uint64_t       abs_i  = (i < 0) ? -i : i;
+  uint64_t       abs_i  = (uint64_t)((i < 0) ? -i : i);
   const unsigned digits = serd_digits((double)abs_i);
   char*          buf    = (char*)calloc(digits + 2, 1);
   SerdNode       node   = {(const uint8_t*)buf, 0, 0, 0, SERD_LITERAL};
@@ -350,7 +362,7 @@ serd_node_new_integer(const int64_t i)
     ++s;
   }
 
-  node.n_bytes = node.n_chars = (size_t)(s - buf) + 1u;
+  node.n_bytes = node.n_chars = (size_t)(s - buf) + 1U;
 
   // Write integer part (right to left)
   do {

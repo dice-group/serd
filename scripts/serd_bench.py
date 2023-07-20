@@ -1,16 +1,27 @@
 #!/usr/bin/env python
 
-# Copyright 2018-2022 David Robillard <d@drobilla.net>
+# Copyright 2018-2023 David Robillard <d@drobilla.net>
 # SPDX-License-Identifier: ISC
+
+""""Benchmark RDF reading and writing commands."""
+
+# pylint: disable=consider-using-f-string
+# pylint: disable=consider-using-with
+# pylint: disable=import-outside-toplevel
+# pylint: disable=invalid-name
+# pylint: disable=redefined-outer-name
+# pylint: disable=too-many-locals
+# pylint: disable=unspecified-encoding
 
 import argparse
 import csv
 import itertools
 import math
-import matplotlib
 import os
 import subprocess
 import sys
+
+import matplotlib
 
 
 class WorkingDirectory:
@@ -30,16 +41,35 @@ class WorkingDirectory:
         os.chdir(self.original_dir)
 
 
-def filename(n):
+def order_of_magnitude(values):
+    "Return the order of magnitude to use for an axis with the given values"
+    if len(values) <= 0:
+        return 0
+
+    # Calculate the "best" order of magnitude like ScalarFormatter does
+    val = max(values)
+    oom = math.floor(math.log10(max(1.0, val)))
+    if -3 <= oom <= 3:
+        return 0
+
+    # Round down to a sensible (thousand, millions, billions, etc) order
+    remainder = oom % 3
+    oom = oom - remainder
+    return oom
+
+
+def filename(num):
     "Filename for a generated file with n statements"
-    return "gen%d.ttl" % n
+    return "gen%d.ttl" % num
 
 
 def gen(sp2b_dir, n_min, n_max, step):
     "Generate files with n_min ... n_max statements if they are not present"
     with WorkingDirectory(sp2b_dir) as directory:
         for n in range(n_min, n_max + step, step):
-            out_path = os.path.join(directory.original_dir, "build", filename(n))
+            out_path = os.path.join(
+                directory.original_dir, "build", filename(n)
+            )
             if not os.path.exists(out_path):
                 subprocess.call(["./sp2b_gen", "-t", str(n), out_path])
 
@@ -56,10 +86,11 @@ def parse_time(report):
     "Return user time and max RSS from a /usr/bin/time -v report"
     time = memory = None
     for line in report.split("\n"):
+        after_colon = line.find(":") + 1
         if line.startswith("\tUser time"):
-            time = float(line[line.find(":") + 1 :])
+            time = float(line[after_colon:])
         elif line.startswith("\tMaximum resident set"):
-            memory = float(line[line.find(":") + 1 :]) * 1024
+            memory = int(float(line[after_colon:]) * 1024)
 
     return (time, memory)
 
@@ -80,11 +111,10 @@ def get_dashes():
 
 def plot(in_file, out_filename, x_label, y_label, y_max=None):
     "Plot a TSV file as SVG"
-
     matplotlib.use("agg")
     import matplotlib.pyplot as plt
 
-    plt.rcParams.update({'font.size': 7})
+    plt.rcParams.update({"font.size": 7})
 
     fig_height = 1.8
     dashes = get_dashes()
@@ -92,27 +122,27 @@ def plot(in_file, out_filename, x_label, y_label, y_max=None):
 
     reader = csv.reader(in_file, delimiter="\t")
     header = next(reader)
-    cols = [x for x in zip(*list(reader))]
+    cols = list(zip(*list(reader)))
 
+    # Create a figure with a grid
     plt.clf()
     fig = plt.figure(figsize=(fig_height * math.sqrt(2), fig_height))
     ax = fig.add_subplot(111)
-
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
 
-    if y_max is not None:
-        ax.set_ylim([0.0, y_max])
-
     ax.grid(linewidth=0.25, linestyle=":", color="0", dashes=[0.2, 1.6])
-    ax.ticklabel_format(style="sci", scilimits=(4, 0), useMathText=True)
     ax.tick_params(axis="both", width=0.75)
 
     x = list(map(float, cols[0]))
+    actual_y_max = 0.0
     for i, y in enumerate(cols[1::]):
+        y_floats = list(map(float, y))
+        y_floats_max = max(y_floats)
+        actual_y_max = max(actual_y_max, y_floats_max)
         ax.plot(
             x,
-            list(map(float, y)),
+            y_floats,
             label=header[i + 1],
             marker=next(markers),
             dashes=next(dashes),
@@ -120,6 +150,17 @@ def plot(in_file, out_filename, x_label, y_label, y_max=None):
             linewidth=1.0,
         )
 
+    # Set Y axis limits to go from zero to the maximum value with a small pad
+    y_max = (1.025 * actual_y_max) if y_max is None else y_max
+    ax.set_ylim([0.0, y_max])
+
+    # Set axis magnitudes
+    x_m = (order_of_magnitude(x),) * 2
+    y_m = (order_of_magnitude([y_max]),) * 2
+    ax.ticklabel_format(axis="x", style="sci", scilimits=x_m, useMathText=True)
+    ax.ticklabel_format(axis="y", style="sci", scilimits=y_m, useMathText=True)
+
+    # Save plot
     plt.legend(labelspacing=0.25)
     plt.savefig(out_filename, bbox_inches="tight", pad_inches=0.125)
     plt.close()
@@ -194,11 +235,11 @@ def plot_results():
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(
         usage="%(prog)s [OPTION]... SP2B_DIR",
-        description="Benchmark RDF reading and writing commands\n",
+        description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 example:
-  %(prog)s --max 100000 \\
+  %(prog)s --max 300000 \\
       --run 'rapper -i turtle -o turtle' \\
       --run 'riot --output=ttl' \\
       --run 'rdfpipe -i turtle -o turtle' /path/to/sp2b/src/
@@ -206,7 +247,7 @@ example:
     )
 
     ap.add_argument(
-        "--max", type=int, default=1000000, help="maximum triple count"
+        "--max", type=int, default=3000000, help="maximum triple count"
     )
     ap.add_argument(
         "--run",
@@ -224,12 +265,14 @@ example:
     ap.add_argument(
         "--no-plot", action="store_true", help="do not plot benchmarks"
     )
+    ap.add_argument("--steps", type=int, default=6, help="number of steps")
+
     ap.add_argument("sp2b_dir", help="path to sp2b test data generator")
 
     args = ap.parse_args(sys.argv[1:])
 
     progs = ["serdi -b -f -i turtle -o turtle"] + args.run
-    min_n = int(args.max / 10)
+    min_n = int(args.max / args.steps)
     max_n = args.max
     step = min_n
 

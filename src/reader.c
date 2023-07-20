@@ -19,7 +19,7 @@
 SerdStatus
 r_err(SerdReader* const reader, const SerdStatus st, const char* const fmt, ...)
 {
-  va_list args;
+  va_list args; // NOLINT(cppcoreguidelines-init-variables)
   va_start(args, fmt);
   const Cursor* const cur = &reader->source.cur;
   const SerdError     e = {st, cur->filename, cur->line, cur->col, fmt, &args};
@@ -161,12 +161,6 @@ emit_statement(SerdReader* const reader,
 }
 
 static SerdStatus
-read_statement(SerdReader* const reader)
-{
-  return read_n3_statement(reader);
-}
-
-static SerdStatus
 read_doc(SerdReader* const reader)
 {
   return ((reader->syntax == SERD_NQUADS) ? read_nquadsDoc(reader)
@@ -294,8 +288,8 @@ static SerdStatus
 skip_bom(SerdReader* const me)
 {
   if (serd_byte_source_peek(&me->source) == 0xEF) {
-    serd_byte_source_advance(&me->source);
-    if (serd_byte_source_peek(&me->source) != 0xBB ||
+    if (serd_byte_source_advance(&me->source) ||
+        serd_byte_source_peek(&me->source) != 0xBB ||
         serd_byte_source_advance(&me->source) ||
         serd_byte_source_peek(&me->source) != 0xBF ||
         serd_byte_source_advance(&me->source)) {
@@ -360,10 +354,12 @@ serd_reader_read_chunk(SerdReader* const reader)
 
   if (peek_byte(reader) == 0) {
     // Skip leading null byte, for reading from a null-delimited socket
-    eat_byte_safe(reader, 0);
+    st = skip_byte(reader, 0);
   }
 
-  return st ? st : read_statement(reader);
+  return st                                ? st
+         : (reader->syntax == SERD_NQUADS) ? read_nquads_statement(reader)
+                                           : read_n3_statement(reader);
 }
 
 SerdStatus
@@ -422,12 +418,6 @@ serd_reader_read_string(SerdReader* const reader, const uint8_t* const utf8)
   serd_byte_source_close(&reader->source);
 
   return st;
-}
-
-void
-serd_reader_skip_error(SerdReader* const reader)
-{
-  skip_until(reader, '\n');
 }
 
 uint64_t

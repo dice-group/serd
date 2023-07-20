@@ -4,9 +4,11 @@
 # Project information
 
 project = "@SERD_TITLE@"
-copyright = "2022, David Robillard"
+copyright = "2022-2023, David Robillard"
 author = "David Robillard"
 release = "@SERD_VERSION@"
+version = "@SERD_VERSION@"
+desc = "A lightweight library for working with RDF"
 
 # General configuration
 
@@ -17,6 +19,7 @@ pygments_style = "friendly"
 
 try:
     import sphinx_lv2_theme
+
     have_lv2_theme = True
 except ModuleNotFoundError:
     have_lv2_theme = False
@@ -24,25 +27,13 @@ except ModuleNotFoundError:
 # Ignore everything opaque or external for nitpicky mode
 _opaque = [
     "FILE",
-    "SerdByteSinkImpl",
-    "SerdByteSourceImpl",
-    "SerdCursorImpl",
     "SerdEnvImpl",
-    "SerdIterImpl",
-    "SerdModelImpl",
-    "SerdNodeImpl",
-    "SerdNodesImpl",
-    "SerdRangeImpl",
     "SerdReaderImpl",
-    "SerdSinkImpl",
-    "SerdStatementImpl",
-    "SerdWorldImpl",
     "SerdWriterImpl",
     "int64_t",
     "size_t",
     "uint32_t",
     "uint8_t",
-    "uintptr_t",
     "va_list",
 ]
 
@@ -51,65 +42,79 @@ nitpick_ignore = list(map(lambda x: ("c:identifier", x), _opaque))
 # HTML output
 
 html_copy_source = False
+html_secnumber_suffix = " "
 html_short_title = "@SERD_TITLE@"
 html_static_path = ["@SERD_SRCDIR@/doc/_static"]
-html_theme = "sphinx_lv2_theme"
+
+html_theme_options = {
+    "description": desc,
+    "logo": "serd.svg",
+    "logo_name": True,
+    "logo_width": "8em",
+}
+
+if tags.has("singlehtml"):
+    html_sidebars = {"**": ["globaltoc.html"]}
+    html_theme_options.update(
+        {
+            "globaltoc_collapse": False,
+            "globaltoc_maxdepth": 3,
+            "nosidebar": False,
+            "page_width": "80em",
+        }
+    )
+else:
+    html_theme_options.update(
+        {
+            "globaltoc_collapse": True,
+            "globaltoc_maxdepth": 1,
+            "nosidebar": True,
+            "page_width": "60em",
+        }
+    )
 
 if have_lv2_theme:
     html_theme = "sphinx_lv2_theme"
 
-    if tags.has('singlehtml'):
-        html_sidebars = {
-            "**": [
-                "globaltoc.html",
-            ]
-        }
-
-        html_theme_options = {
-            "body_max_width": "48em",
-            "body_min_width": "48em",
-            "description": "A lightweight library for working with RDF",
+    html_theme_options.update(
+        {
             "show_footer_version": True,
-            "show_logo_version": False,
-            "logo": "serd.svg",
-            "logo_name": True,
-            "logo_width": "8em",
-            "nosidebar": False,
-            "page_width": "80em",
-            "sidebar_width": "18em",
-            "globaltoc_maxdepth": 3,
-            "globaltoc_collapse": False,
+            "show_logo_version": True,
+        }
+    )
+
+    if tags.has("singlehtml"):
+        html_theme_options.update(
+            {
+                "body_max_width": "64em",
+                "body_min_width": "64em",
+                "nosidebar": False,
+                "sidebar_width": "12em",
+            }
+        )
+
+    else:
+        html_theme_options.update(
+            {
+                "body_max_width": "60em",
+                "body_min_width": "40em",
+            }
+        )
+
+else:
+    html_theme = "alabaster"
+
+    if tags.has("singlehtml"):
+        html_theme_options = {
+            "body_max_width": "58em",
+            "body_min_width": "40em",
+            "sidebar_width": "16em",
         }
 
     else:
         html_theme_options = {
             "body_max_width": "60em",
             "body_min_width": "40em",
-            "description": "A lightweight library for working with RDF",
-            "show_footer_version": True,
-            "show_logo_version": False,
-            "logo": "serd.svg",
-            "logo_name": True,
-            "logo_width": "8em",
             "nosidebar": True,
-            "page_width": "60em",
-            "sidebar_width": "14em",
-            "globaltoc_maxdepth": 1,
-            "globaltoc_collapse": True,
+            "show_relbars": True,
         }
-
-else:
-
-    html_theme = "alabaster"
-
-    html_theme_options = {
-        "body_max_width": "60em",
-        "body_min_width": "40em",
-        "description": "A lightweight library for working with RDF",
-        "logo": "serd.svg",
-        "logo_name": True,
-        "page_width": "60em",
-        "sidebar_width": "14em",
-        "globaltoc_maxdepth": 1,
-        "globaltoc_collapse": True,
-    }
