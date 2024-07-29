@@ -8,22 +8,25 @@ html_dir = docdir / versioned_name / 'html'
 custom_target(
   'html',
   build_by_default: true,
-  command: [
-    sphinx_build, '-M', 'html', '@OUTDIR@' / '..', '@OUTDIR@' / '..',
+  command: sphinx_build_command + [
+    '-b', 'html',
     '-t', 'html',
-  ] + sphinx_flags,
-  input: [c_rst_files, c_serd_rst, c_index_xml, conf_py],
+    sphinx_in_dir,
+    '@OUTDIR@',
+  ],
+  input: [api_serd_rst, conf_py, sphinx_input],
   install: true,
   install_dir: html_dir,
   output: [
+    'index.html',
+
     '_static',
     'api',
     'genindex.html',
-    'index.html',
     'overview.html',
   ],
 )
 
 if not meson.is_subproject()
-  summary('Paginated HTML', get_option('prefix') / html_dir, section: 'Directories')
+  summary('HTML', get_option('prefix') / html_dir, section: 'Directories')
 endif

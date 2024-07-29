@@ -1,4 +1,4 @@
-# Copyright 2020-2023 David Robillard <d@drobilla.net>
+# Copyright 2020-2024 David Robillard <d@drobilla.net>
 # SPDX-License-Identifier: 0BSD OR ISC
 
 # Project-specific warning suppressions
@@ -16,12 +16,14 @@ if is_variable('cc')
     if warning_level == 'everything'
       c_suppressions += [
         '-Wno-cast-align',
+        '-Wno-cast-function-type-strict',
         '-Wno-cast-qual',
         '-Wno-declaration-after-statement',
         '-Wno-double-promotion',
         '-Wno-format-nonliteral',
-        '-Wno-nullable-to-nonnull-conversion',
         '-Wno-padded',
+        '-Wno-switch-default',
+        '-Wno-unsafe-buffer-usage',
       ]
 
       if host_machine.system() == 'windows'

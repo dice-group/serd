@@ -9,6 +9,7 @@
 
 #include "serd_internal.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -199,6 +200,7 @@ serd_reader_new(const SerdSyntax syntax,
 void
 serd_reader_set_strict(SerdReader* const reader, const bool strict)
 {
+  assert(reader);
   reader->strict = strict;
 }
 
@@ -207,6 +209,7 @@ serd_reader_set_error_sink(SerdReader* const   reader,
                            const SerdErrorSink error_sink,
                            void* const         error_handle)
 {
+  assert(reader);
   reader->error_sink   = error_sink;
   reader->error_handle = error_handle;
 }
@@ -237,6 +240,7 @@ serd_reader_free(SerdReader* const reader)
 void*
 serd_reader_get_handle(const SerdReader* const reader)
 {
+  assert(reader);
   return reader->handle;
 }
 
@@ -244,6 +248,8 @@ void
 serd_reader_add_blank_prefix(SerdReader* const    reader,
                              const uint8_t* const prefix)
 {
+  assert(reader);
+
   free(reader->bprefix);
   reader->bprefix_len = 0;
   reader->bprefix     = NULL;
@@ -260,6 +266,7 @@ void
 serd_reader_set_default_graph(SerdReader* const     reader,
                               const SerdNode* const graph)
 {
+  assert(reader);
   serd_node_free(&reader->default_graph);
   reader->default_graph = serd_node_copy(graph);
 }
@@ -267,6 +274,9 @@ serd_reader_set_default_graph(SerdReader* const     reader,
 SerdStatus
 serd_reader_read_file(SerdReader* const reader, const uint8_t* const uri)
 {
+  assert(reader);
+  assert(uri);
+
   uint8_t* const path = serd_file_uri_parse(uri, NULL);
   if (!path) {
     return SERD_ERR_BAD_ARG;
@@ -307,6 +317,9 @@ serd_reader_start_stream(SerdReader* const    reader,
                          const uint8_t* const name,
                          const bool           bulk)
 {
+  assert(reader);
+  assert(file);
+
   return serd_reader_start_source_stream(reader,
                                          bulk ? (SerdSource)fread
                                               : serd_file_read_byte,
@@ -324,6 +337,10 @@ serd_reader_start_source_stream(SerdReader* const         reader,
                                 const uint8_t* const      name,
                                 const size_t              page_size)
 {
+  assert(reader);
+  assert(read_func);
+  assert(error_func);
+
   return serd_byte_source_open_source(
     &reader->source, read_func, error_func, stream, name, page_size);
 }
@@ -345,6 +362,8 @@ serd_reader_prepare(SerdReader* const reader)
 SerdStatus
 serd_reader_read_chunk(SerdReader* const reader)
 {
+  assert(reader);
+
   SerdStatus st = SERD_SUCCESS;
   if (!reader->source.prepared) {
     st = serd_reader_prepare(reader);
@@ -365,6 +384,8 @@ serd_reader_read_chunk(SerdReader* const reader)
 SerdStatus
 serd_reader_end_stream(SerdReader* const reader)
 {
+  assert(reader);
+
   return serd_byte_source_close(&reader->source);
 }
 
@@ -373,6 +394,9 @@ serd_reader_read_file_handle(SerdReader* const    reader,
                              FILE* const          file,
                              const uint8_t* const name)
 {
+  assert(reader);
+  assert(file);
+
   return serd_reader_read_source(reader,
                                  (SerdSource)fread,
                                  (SerdStreamErrorFunc)ferror,
@@ -389,6 +413,10 @@ serd_reader_read_source(SerdReader* const         reader,
                         const uint8_t* const      name,
                         const size_t              page_size)
 {
+  assert(reader);
+  assert(source);
+  assert(error);
+
   SerdStatus st = serd_reader_start_source_stream(
     reader, source, error, stream, name, page_size);
 
@@ -408,6 +436,9 @@ serd_reader_read_source(SerdReader* const         reader,
 SerdStatus
 serd_reader_read_string(SerdReader* const reader, const uint8_t* const utf8)
 {
+  assert(reader);
+  assert(utf8);
+
   serd_byte_source_open_string(&reader->source, utf8);
 
   SerdStatus st = serd_reader_prepare(reader);

@@ -3,9 +3,11 @@
 
 #include "string_utils.h"
 #include "uri_utils.h"
+#include "warnings.h"
 
 #include "serd/serd.h"
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -15,6 +17,8 @@
 const uint8_t*
 serd_uri_to_path(const uint8_t* uri)
 {
+  assert(uri);
+
   const uint8_t* path = uri;
   if (!is_windows_path(uri) && serd_uri_string_has_scheme(uri)) {
     if (!!strncmp((const char*)uri, "file:", 5)) {
@@ -41,6 +45,8 @@ serd_uri_to_path(const uint8_t* uri)
 uint8_t*
 serd_file_uri_parse(const uint8_t* const uri, uint8_t** const hostname)
 {
+  assert(uri);
+
   const uint8_t* path = uri;
   if (hostname) {
     *hostname = NULL;
@@ -112,6 +118,9 @@ serd_uri_string_has_scheme(const uint8_t* utf8)
 SerdStatus
 serd_uri_parse(const uint8_t* const utf8, SerdURI* const out)
 {
+  assert(utf8);
+  assert(out);
+
   *out = SERD_URI_NULL;
 
   const uint8_t* ptr = utf8;
@@ -292,6 +301,10 @@ serd_uri_resolve(const SerdURI* const r,
                  const SerdURI* const base,
                  SerdURI* const       t)
 {
+  assert(r);
+  assert(base);
+  assert(t);
+
   if (!base->scheme.len) {
     *t = *r; // Don't resolve against non-absolute URIs
     return;
@@ -336,6 +349,8 @@ write_path_tail(SerdSink             sink,
                 const SerdURI* const uri,
                 const size_t         i)
 {
+  SERD_DISABLE_NULL_WARNINGS
+
   size_t len = 0;
   if (i < uri->path_base.len) {
     len += sink(uri->path_base.buf + i, uri->path_base.len - i, stream);
@@ -351,6 +366,8 @@ write_path_tail(SerdSink             sink,
   }
 
   return len;
+
+  SERD_RESTORE_WARNINGS
 }
 
 /** Write the path of `uri` relative to the path of `base`. */
@@ -411,6 +428,9 @@ serd_uri_serialise_relative(const SerdURI* const uri,
                             SerdSink             sink,
                             void* const          stream)
 {
+  assert(uri);
+  assert(sink);
+
   size_t     len = 0;
   const bool relative =
     root ? uri_is_under(uri, root) : uri_is_related(uri, base);
@@ -418,6 +438,8 @@ serd_uri_serialise_relative(const SerdURI* const uri,
   if (relative) {
     len = write_rel_path(sink, stream, uri, base);
   }
+
+  SERD_DISABLE_NULL_WARNINGS
 
   if (!relative || (!len && base->query.buf)) {
     if (uri->scheme.buf) {
@@ -452,6 +474,8 @@ serd_uri_serialise_relative(const SerdURI* const uri,
     len += sink(uri->fragment.buf, uri->fragment.len, stream);
   }
 
+  SERD_RESTORE_WARNINGS
+
   return len;
 }
 
@@ -459,5 +483,7 @@ serd_uri_serialise_relative(const SerdURI* const uri,
 size_t
 serd_uri_serialise(const SerdURI* const uri, SerdSink sink, void* const stream)
 {
+  assert(uri);
+  assert(sink);
   return serd_uri_serialise_relative(uri, NULL, NULL, sink, stream);
 }

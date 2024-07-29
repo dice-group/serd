@@ -8,19 +8,26 @@ singlehtml_dir = docdir / versioned_name / 'singlehtml'
 custom_target(
   'singlehtml',
   build_by_default: true,
-  command: [
-    sphinx_build, '-M', 'singlehtml', '@OUTDIR@' / '..', '@OUTDIR@' / '..',
+  command: sphinx_build_command + [
+    '-b', 'singlehtml',
     '-t', 'singlehtml',
-  ] + sphinx_flags,
-  input: [c_rst_files, c_serd_rst, c_index_xml, conf_py],
+    sphinx_in_dir,
+    '@OUTDIR@',
+  ],
+  input: [api_serd_rst, conf_py, sphinx_input],
   install: true,
   install_dir: singlehtml_dir,
   output: [
-    '_static',
     'index.html',
+
+    '_static',
   ],
 )
 
 if not meson.is_subproject()
-  summary('Unified HTML', get_option('prefix') / singlehtml_dir, section: 'Directories')
+  summary(
+    'Single HTML',
+    get_option('prefix') / singlehtml_dir,
+    section: 'Directories',
+  )
 endif

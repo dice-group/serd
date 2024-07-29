@@ -1,4 +1,4 @@
-# Copyright 2021-2023 David Robillard <d@drobilla.net>
+# Copyright 2021-2024 David Robillard <d@drobilla.net>
 # SPDX-License-Identifier: 0BSD OR ISC
 
 project(
@@ -9,11 +9,10 @@ project(
     'buildtype=release',
     'c_std=c99',
     'c_winlibs=[]',
-    'warning_level=3',
   ],
   license: 'ISC',
   meson_version: '>= 0.56.0',
-  version: '0.31.5',
+  version: '0.32.3',
 )
 
 serd_src_root = meson.current_source_dir()
@@ -70,28 +69,30 @@ else
   # Only use the features detected by the build system
   platform_c_args += ['-DSERD_NO_DEFAULT_CONFIG'] + system_c_args
 
-  # Define HAVE_SOMETHING symbols for all detected features
+  # Feature checks have a header to include and code for the body of main()
   template = '#include <@0@>\nint main(void) { @1@; }'
-  if cc.links(
-    template.format('stdio.h', 'return fileno(stdin);'),
-    args: system_c_args,
-    name: 'fileno')
-    platform_c_args += ['-DHAVE_FILENO']
-  endif
-  if cc.links(
-    template.format('fcntl.h',
-                    'posix_fadvise(0, 0, 4096, POSIX_FADV_SEQUENTIAL)'),
-    args: system_c_args,
-    name: 'posix_fadvise')
-    platform_c_args += ['-DHAVE_POSIX_FADVISE']
-  endif
-  if cc.links(
-    template.format('stdlib.h',
-                    'void* mem=NULL; posix_memalign(&mem, 8U, 8U);'),
-    args: system_c_args,
-    name: 'posix_memalign')
-    platform_c_args += ['-DHAVE_POSIX_MEMALIGN']
-  endif
+  feature_tests = {
+    'fileno': [
+      'stdio.h',
+      'return fileno(stdin);',
+    ],
+    'posix_fadvise': [
+      'fcntl.h',
+      'posix_fadvise(0, 0, 4096, POSIX_FADV_SEQUENTIAL);',
+    ],
+    'posix_memalign': [
+      'stdlib.h',
+      'void* mem=NULL; posix_memalign(&mem, 8U, 8U);',
+    ],
+  }
+
+  # Define HAVE_SOMETHING symbols for all detected features
+  foreach name, args : feature_tests
+    code = template.format(args[0], args[1])
+    if cc.links(code, args: system_c_args, name: name)
+      platform_c_args += ['-DHAVE_' + name.to_upper()]
+    endif
+  endforeach
 endif
 
 ###########
@@ -131,6 +132,7 @@ libserd = library(
     '-DSERD_INTERNAL',
     '-DSERD_VERSION="@0@"'.format(meson.project_version()),
   ] + c_suppressions + extra_c_args + platform_c_args,
+  darwin_versions: [major_version + '.0.0', meson.project_version()],
   dependencies: m_dep,
   gnu_symbol_visibility: 'hidden',
   include_directories: include_dirs,
@@ -184,10 +186,6 @@ if not get_option('tools').disabled()
   )
 
   meson.override_find_program('serdi', serdi)
-
-  if not get_option('docs').disabled()
-    install_man(files('doc/serdi.1'))
-  endif
 endif
 
 # Display top-level summary (before subdirectories to appear first)
@@ -203,9 +201,9 @@ if not meson.is_subproject()
 
   summary(
     {
-      'Install prefix':  get_option('prefix'),
-      'Headers':  get_option('prefix') / get_option('includedir'),
-      'Libraries':  get_option('prefix') / get_option('libdir'),
+      'Install prefix': get_option('prefix'),
+      'Headers': get_option('prefix') / get_option('includedir'),
+      'Libraries': get_option('prefix') / get_option('libdir'),
     },
     section: 'Directories',
   )
@@ -214,7 +212,6 @@ if not meson.is_subproject()
     summary(
       {
         'Executables': get_option('prefix') / get_option('bindir'),
-        'Man pages': get_option('prefix') / get_option('mandir'),
       },
       section: 'Directories',
     )
@@ -225,26 +222,10 @@ endif
 # Support #
 ###########
 
-ttl_metadata_files = files(
-  'serd.ttl',
-  'test/extra/abbreviate/manifest.ttl',
-  'test/extra/bad/manifest.ttl',
-  'test/extra/big/manifest.ttl',
-  'test/extra/good/manifest.ttl',
-  'test/extra/lax/manifest.ttl',
-  'test/extra/perfect/manifest.ttl',
-  'test/extra/prefix/manifest.ttl',
-  'test/extra/pretty/manifest.ttl',
-  'test/extra/qualify/manifest.ttl',
-  'test/extra/root/manifest.ttl',
-)
-
 subdir('scripts')
 
 if not get_option('tests').disabled()
   subdir('test')
 endif
 
-if not get_option('docs').disabled()
-  subdir('doc')
-endif
+subdir('doc')

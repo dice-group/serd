@@ -8,20 +8,38 @@ wrapper = meson.get_external_property('exe_wrapper', '')
 # Scripts and Metadata #
 ########################
 
-plot_scripts = files(
+plot_script_paths = [
   '../scripts/serd_bench.py',
-)
+]
 
-simple_scripts = files(
+simple_script_paths = [
   '../scripts/check_formatting.py',
-  'run_suite.py',
   'serd_test_util/__init__.py',
+  'run_suite.py',
   'test_quiet.py',
   'test_stdin.py',
   'test_write_error.py',
-)
+]
 
-python_scripts = simple_scripts + plot_scripts
+ttl_metadata_file_paths = [
+  '../serd.ttl',
+  'extra/abbreviate/manifest.ttl',
+  'extra/bad/manifest.ttl',
+  'extra/big/manifest.ttl',
+  'extra/full/manifest.ttl',
+  'extra/good/manifest.ttl',
+  'extra/lax/manifest.ttl',
+  'extra/perfect/manifest.ttl',
+  'extra/prefix/manifest.ttl',
+  'extra/pretty/manifest.ttl',
+  'extra/qualify/manifest.ttl',
+  'extra/root/manifest.ttl',
+]
+
+plot_scripts = files(plot_script_paths)
+simple_scripts = files(simple_script_paths)
+python_script_paths = simple_script_paths + plot_script_paths
+python_scripts = plot_scripts + simple_scripts
 
 if get_option('lint')
   # Check release metadata
@@ -47,8 +65,9 @@ if get_option('lint')
   black = find_program('black', required: false)
   if black.found()
     black_opts = ['--check', '-q', '-l', '79']
-    foreach script : python_scripts
-      name = '@0@'.format(script).underscorify()
+    foreach script_path : python_script_paths
+      script = files(script_path)
+      name = script_path.underscorify()
       test(name, black, args: black_opts + [script], suite: 'scripts')
     endforeach
   endif
@@ -69,21 +88,20 @@ if get_option('lint')
       required: false,
     )
 
-    pylint_scripts = simple_scripts
+    pylint_args = ['--disable', 'bad-option-value'] + simple_scripts
     if plot_py.found()
-      pylint_scripts += plot_scripts
+      pylint_args += plot_scripts
     endif
 
-    pylint_args = ['--disable', 'bad-option-value']
-    test('pylint', pylint, args: pylint_args + pylint_scripts, suite: 'scripts')
+    test('pylint', pylint, args: pylint_args, suite: 'scripts')
   endif
 
   # Check Turtle formatting with serdi
-  foreach ttl_file : ttl_metadata_files
+  foreach ttl_file_path : ttl_metadata_file_paths
     test(
-      '@0@'.format(ttl_file).underscorify(),
+      ttl_file_path.underscorify(),
       check_formatting_py,
-      args: [ttl_file, serdi, '-o', 'turtle'],
+      args: [files(ttl_file_path), serdi, '-o', 'turtle'],
       suite: 'data',
     )
   endforeach
@@ -103,6 +121,7 @@ unit_tests = [
   'env',
   'free_null',
   'node',
+  'reader',
   'reader_writer',
   'string',
   'uri',
@@ -135,14 +154,20 @@ simple_command_tests = {
   'serdi': {
     'bad': [
       ['-c'],
+      ['-cx'],
       ['-fi'],
       ['-i', 'turtle'],
-      ['-i', 'unknown'],
+      ['-i', 'turt'],
       ['-i'],
-      ['-o', 'unknown'],
+      ['-ix'],
+      ['-o', '~unknown'],
+      ['-o', 'ntripleses'],
       ['-o'],
+      ['-ox'],
       ['-p'],
+      ['-px'],
       ['-r'],
+      ['-rx'],
       ['-z'],
     ],
     'good': [
@@ -159,6 +184,7 @@ if is_variable('serdi')
   script_args = common_script_args + ['--serdi', serdi]
   serd_ttl = files('../serd.ttl')[0]
   bad_input_file = files('extra/bad/bad-base.ttl')
+  text_input_file = files('extra/bad/README.md')
 
   test('serd_ttl', serdi, args: [serd_ttl], suite: 'data')
 
@@ -195,6 +221,7 @@ if is_variable('serdi')
     'string': ['-s', '<foo> a <Bar> .'],
     'no_such_file': ['no_such_file'],
     'remote': ['ftp://example.org/unsupported.ttl'],
+    'text': [text_input_file],
   }
 
   foreach name, args : bad_input_tests
@@ -232,84 +259,122 @@ ns_w3 = 'http://www.w3.org/2013/'
 
 test_suites = {
   'nquads': [
-    files('w3c/nquads/manifest.ttl'), ns_w3 + 'NQuadsTests/',
-    '--', '-a', '-i', 'NQuads',
+    files('w3c/nquads/manifest.ttl'),
+    ns_w3 + 'NQuadsTests/',
+    '--',
+    '-a',
+    ['-i', 'NQuads'],
   ],
   'ntriples': [
-    files('w3c/ntriples/manifest.ttl'), ns_w3 + 'NTriplesTests/',
-    '--', '-a', '-i', 'NTriples',
+    files('w3c/ntriples/manifest.ttl'),
+    ns_w3 + 'NTriplesTests/',
+    '--',
+    '-a',
+    ['-i', 'NTriples'],
   ],
   'trig': [
-    files('w3c/trig/manifest.ttl'), ns_w3 + 'TriGTests/',
-    '--', '-a', '-i', 'TriG',
+    files('w3c/trig/manifest.ttl'),
+    ns_w3 + 'TriGTests/',
+    '--',
+    '-a',
+    ['-i', 'TriG'],
   ],
   'turtle': [
-    files('w3c/turtle/manifest.ttl'), ns_w3 + 'TurtleTests/',
-    '--', '-a', '-i', 'Turtle',
+    files('w3c/turtle/manifest.ttl'),
+    ns_w3 + 'TurtleTests/',
+    '--',
+    '-a',
+    ['-i', 'Turtle'],
   ],
 
   'abbreviate': [
-    files('extra/abbreviate/manifest.ttl'), ns_serdtest + 'abbreviate/',
+    files('extra/abbreviate/manifest.ttl'),
+    ns_serdtest + 'abbreviate/',
   ],
   'bad': [
-    files('extra/bad/manifest.ttl'), ns_serdtest + 'bad/',
+    files('extra/bad/manifest.ttl'),
+    ns_serdtest + 'bad/',
   ],
   'bad_turtle': [
-    files('extra/bad/manifest.ttl'), ns_serdtest + 'bad/',
-    '--', '-o', 'turtle',
+    files('extra/bad/manifest.ttl'),
+    ns_serdtest + 'bad/',
+    '--',
+    ['-o', 'turtle'],
   ],
   'big': [
-    files('extra/big/manifest.ttl'), ns_serdtest + 'big/',
+    files('extra/big/manifest.ttl'),
+    ns_serdtest + 'big/',
   ],
   'bulk': [
-    files('extra/good/manifest.ttl'), ns_serdtest + 'good/',
-    '--', '-b',
+    files('extra/good/manifest.ttl'),
+    ns_serdtest + 'good/',
+    '--',
+    '-b',
   ],
   'fast': [
-    files('extra/good/manifest.ttl'), ns_serdtest + 'good/',
-    '--', '-f',
+    files('extra/good/manifest.ttl'),
+    ns_serdtest + 'good/',
+    '--',
+    '-f',
   ],
   'full': [
-    files('extra/full/manifest.ttl'), ns_serdtest + 'full/',
-    '--', '-f',
+    files('extra/full/manifest.ttl'),
+    ns_serdtest + 'full/',
+    '--',
+    '-f',
   ],
   'good': [
-    files('extra/good/manifest.ttl'), ns_serdtest + 'good/',
+    files('extra/good/manifest.ttl'),
+    ns_serdtest + 'good/',
   ],
   'lax_lax': [
     '--lax',
-    files('extra/lax/manifest.ttl'), ns_serdtest + 'lax/',
-    '--', '-l',
+    files('extra/lax/manifest.ttl'),
+    ns_serdtest + 'lax/',
+    '--',
+    '-l',
   ],
   'lax_strict': [
-    files('extra/lax/manifest.ttl'), ns_serdtest + 'lax/',
+    files('extra/lax/manifest.ttl'),
+    ns_serdtest + 'lax/',
   ],
   'perfect_forward': [
-    files('extra/perfect/manifest.ttl'), ns_serdtest + 'perfect/',
+    files('extra/perfect/manifest.ttl'),
+    ns_serdtest + 'perfect/',
   ],
   'perfect_reverse': [
     '--reverse',
-    files('extra/perfect/manifest.ttl'), ns_serdtest + 'perfect/',
+    files('extra/perfect/manifest.ttl'),
+    ns_serdtest + 'perfect/',
   ],
   'prefix_add': [
     '--reverse',
-    files('extra/prefix/manifest.ttl'), ns_serdtest + 'prefix/',
-    '--', '-p', 'test',
+    files('extra/prefix/manifest.ttl'),
+    ns_serdtest + 'prefix/',
+    '--',
+    ['-p', 'test'],
   ],
   'prefix_remove': [
-    files('extra/prefix/manifest.ttl'), ns_serdtest + 'prefix/',
-    '--', '-c', 'test',
+    files('extra/prefix/manifest.ttl'),
+    ns_serdtest + 'prefix/',
+    '--',
+    ['-c', 'test'],
   ],
   'pretty': [
-    files('extra/pretty/manifest.ttl'), ns_serdtest + 'pretty/',
+    files('extra/pretty/manifest.ttl'),
+    ns_serdtest + 'pretty/',
   ],
   'qualify': [
-    files('extra/qualify/manifest.ttl'), ns_serdtest + 'qualify/',
-    '--', '-i', 'turtle', # Just for coverage
+    files('extra/qualify/manifest.ttl'),
+    ns_serdtest + 'qualify/',
+    '--',
+    ['-i', 'turtle'], # Just for coverage
   ],
   'root': [
-    files('extra/root/manifest.ttl'), ns_serdtest + 'root/',
-    '--', '-r', 'http://example.org/top/root/',
+    files('extra/root/manifest.ttl'),
+    ns_serdtest + 'root/',
+    '--',
+    ['-r', 'http://example.org/top/root/'],
   ],
 }
 

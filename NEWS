@@ -1,4 +1,27 @@
-serd (0.31.5) unstable; urgency=medium
+serd (0.32.3) unstable; urgency=medium
+
+  * Clean up enum declarations
+  * Fix library current_version on MacOS
+  * Fix overly permissive parsing of syntax names on the command line
+  * Fix parsing NQuads lines with no space before the final dot
+  * Fix rewriting special literals when datatype URIs are prefixed names
+  * Gracefully handle errors while writing the end of anonymous nodes
+  * Improve test suite coverage
+  * Simplify some character classification and comparison code
+  * Support reading lone lists in lax mode
+  * Treat out of range unicode characters as errors
+  * Write blank lines between graphs and statements in TriG
+
+ -- David Robillard <d@drobilla.net>  Tue, 25 Jun 2024 22:38:16 +0000
+
+serd (0.32.2) stable; urgency=medium
+
+  * Enable clang nullability checks
+  * Fix writing empty list objects within blank nodes
+
+ -- David Robillard <d@drobilla.net>  Tue, 23 Jan 2024 19:32:21 +0000
+
+serd (0.32.0) stable; urgency=medium
 
   * Add Windows path separator support to serd_node_new_file_uri()
   * Add long "help" and "version" options to serdi
@@ -31,7 +54,7 @@ serd (0.31.5) unstable; urgency=medium
   * Test header for warnings more strictly
   * Update standard test suites
 
- -- David Robillard <d@drobilla.net>  Fri, 12 May 2023 02:42:30 +0000
+ -- David Robillard <d@drobilla.net>  Sun, 22 Oct 2023 19:36:29 +0000
 
 serd (0.30.16) stable; urgency=medium
 

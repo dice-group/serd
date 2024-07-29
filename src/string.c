@@ -5,6 +5,7 @@
 
 #include "serd/serd.h"
 
+#include <assert.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -48,16 +49,10 @@ serd_strerror(const SerdStatus status)
 static void
 serd_update_flags(const uint8_t c, SerdNodeFlags* const flags)
 {
-  switch (c) {
-  case '\r':
-  case '\n':
+  if (c == '\r' || c == '\n') {
     *flags |= SERD_HAS_NEWLINE;
-    break;
-  case '"':
+  } else if (c == '"') {
     *flags |= SERD_HAS_QUOTE;
-    break;
-  default:
-    break;
   }
 }
 
@@ -67,6 +62,9 @@ serd_substrlen(const uint8_t* const str,
                size_t* const        n_bytes,
                SerdNodeFlags* const flags)
 {
+  assert(n_bytes);
+  assert(flags);
+
   size_t        n_chars = 0;
   size_t        i       = 0;
   SerdNodeFlags f       = 0;
@@ -76,12 +74,9 @@ serd_substrlen(const uint8_t* const str,
       serd_update_flags(str[i], &f);
     }
   }
-  if (n_bytes) {
-    *n_bytes = i;
-  }
-  if (flags) {
-    *flags = f;
-  }
+
+  *n_bytes = i;
+  *flags   = f;
   return n_chars;
 }
 
@@ -90,6 +85,8 @@ serd_strlen(const uint8_t* const str,
             size_t* const        n_bytes,
             SerdNodeFlags* const flags)
 {
+  assert(str);
+
   size_t        n_chars = 0;
   size_t        i       = 0;
   SerdNodeFlags f       = 0;
@@ -113,16 +110,11 @@ read_sign(const char** const sptr)
 {
   double sign = 1.0;
 
-  switch (**sptr) {
-  case '-':
+  if (**sptr == '-') {
     sign = -1.0;
     ++(*sptr);
-    break;
-  case '+':
+  } else if (**sptr == '+') {
     ++(*sptr);
-    break;
-  default:
-    break;
   }
 
   return sign;
@@ -131,6 +123,8 @@ read_sign(const char** const sptr)
 double
 serd_strtod(const char* const str, char** const endptr)
 {
+  assert(str);
+
   double result = 0.0;
 
   // Point s at the first non-whitespace character

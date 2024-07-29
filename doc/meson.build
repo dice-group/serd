@@ -1,7 +1,13 @@
-# Copyright 2020-2022 David Robillard <d@drobilla.net>
+# Copyright 2020-2023 David Robillard <d@drobilla.net>
 # SPDX-License-Identifier: 0BSD OR ISC
 
 docdir = get_option('datadir') / 'doc'
+
+#############
+# Man pages #
+#############
+
+subdir('man')
 
 #############
 # Reference #
@@ -27,7 +33,8 @@ if build_docs
   # Warn if the "official" theme isn't present
   pymod = import('python')
   doc_modules = ['sphinx_lv2_theme']
-  if not pymod.find_installation(modules: doc_modules, required: false).found()
+  py = pymod.find_installation('python3', modules: doc_modules, required: false)
+  if not py.found()
     warning('Missing sphinx_lv2_theme module, falling back to alabaster')
   endif
 
@@ -43,9 +50,12 @@ if build_docs
   )
 
   # Copy hand-written documentation files
-  c_rst_files = files('index.rst', 'overview.rst')
-  foreach f : c_rst_files
-    configure_file(copy: true, input: f, output: '@PLAINNAME@')
+  rst_sources = files('index.rst', 'overview.rst')
+  sphinx_input = []
+  foreach f : rst_sources
+    sphinx_input += [
+      configure_file(copy: true, input: f, output: '@PLAINNAME@'),
+    ]
   endforeach
 
   # Generate reference documentation input with Doxygen and Sphinxygen
@@ -53,60 +63,17 @@ if build_docs
   subdir('api')
 
   # Build strict Sphinx flags, with termination on warnings if werror=true
+  sphinx_in_dir = meson.current_build_dir()
   sphinx_flags = ['-E', '-a', '-q']
   if get_option('werror')
     sphinx_flags += ['-W']
   endif
 
   # Run Sphinx to generate final documentation for each format
+  sphinx_build_command = [sphinx_build] + sphinx_flags
   foreach format : ['html', 'singlehtml']
     if not get_option(format).disabled()
       subdir(format)
     endif
   endforeach
-endif
-
-#############
-# Man Pages #
-#############
-
-mandoc_css = files('mandoc.css')
-
-if get_option('lint')
-  stylelint = find_program('stylelint', required: false)
-  if stylelint.found()
-    test('stylelint', stylelint, args: [mandoc_css], suite: 'data')
-  endif
-endif
-
-mandoc = find_program('mandoc', required: false)
-if mandoc.found()
-  configure_file(input: mandoc_css, output: '@PLAINNAME@', copy: true)
-
-  serdi_html = custom_target(
-    'serdi.html',
-    build_by_default: true,
-    capture: true,
-    command: [
-      mandoc,
-      '-Kutf-8',
-      '-Ostyle=mandoc.css,man=%N.html',
-      '-Thtml',
-      '-Wwarning,stop',
-      '@INPUT@',
-    ],
-    input: files('serdi.1'),
-    output: 'serdi.html',
-  )
-endif
-
-if not meson.is_subproject()
-  summary(
-    {
-      'HTML man pages': mandoc.found(),
-      'API documentation': build_docs,
-    },
-    bool_yn: true,
-    section: 'Components',
-  )
 endif

@@ -10,9 +10,13 @@
 		<#bad-a-subject>
 		<#bad-base>
 		<#bad-blank>
+		<#bad-blank-node-label>
 		<#bad-blank-predicate>
 		<#bad-blank-syntax>
-		<#bad-bom>
+		<#bad-bom-1>
+		<#bad-bom-2>
+		<#bad-bom-only-1>
+		<#bad-bom-only-2>
 		<#bad-char-in-local>
 		<#bad-char-in-prefix>
 		<#bad-char-in-uri>
@@ -24,6 +28,43 @@
 		<#bad-dot-after-subject>
 		<#bad-dot-in-collection>
 		<#bad-empty-blank-predicate>
+		<#bad-nt-eof-after-blank>
+		<#bad-nt-eof-after-lang>
+		<#bad-nt-eof-after-lang-hyphen>
+		<#bad-nt-eof-after-lang-subtag>
+		<#bad-nt-eof-after-object>
+		<#bad-nt-eof-after-predicate>
+		<#bad-nt-eof-after-string>
+		<#bad-nt-eof-after-string-escape>
+		<#bad-nt-eof-after-subject>
+		<#bad-nt-eof-after-underscore>
+		<#bad-nt-eof-before-blank>
+		<#bad-nt-eof-before-iri>
+		<#bad-nt-eof-before-lang>
+		<#bad-nt-eof-before-string>
+		<#bad-nt-eof-before-string-escape>
+		<#bad-nt-eof-in-iri-path>
+		<#bad-nt-eof-in-iri-scheme>
+		<#bad-nt-eof-in-string>
+		<#bad-nt-syntax-blank-u00F7.nt>
+		<#bad-nt-syntax-blank-u037E.nt>
+		<#bad-nt-syntax-blank-u200B.nt>
+		<#bad-nt-syntax-blank-u200E.nt>
+		<#bad-nt-syntax-blank-u203E.nt>
+		<#bad-nt-syntax-blank-u2041.nt>
+		<#bad-nt-syntax-blank-u206F.nt>
+		<#bad-nt-syntax-blank-u2190.nt>
+		<#bad-nt-syntax-blank-u2BFF.nt>
+		<#bad-nt-syntax-blank-u2FF0.nt>
+		<#bad-nt-syntax-cr-in-string>
+		<#bad-nt-syntax-lf-in-string>
+		<#bad-nt-syntax-uri-bar>
+		<#bad-nt-syntax-uri-caret>
+		<#bad-nt-syntax-uri-closing-brace>
+		<#bad-nt-syntax-uri-double-quotes>
+		<#bad-nt-syntax-uri-grave>
+		<#bad-nt-syntax-uri-less-than>
+		<#bad-nt-syntax-uri-opening-brace>
 		<#bad-eof-after-quotes>
 		<#bad-eof-at-string-start>
 		<#bad-eof-in-blank>
@@ -41,6 +82,7 @@
 		<#bad-eof-in-uri>
 		<#bad-eof-in-uri-character>
 		<#bad-eof-in-uri-scheme>
+		<#bad-eof-in-utf8-character>
 		<#bad-equivalence>
 		<#bad-escape>
 		<#bad-ext-namedblank-op>
@@ -58,6 +100,7 @@
 		<#bad-keywords>
 		<#bad-lang>
 		<#bad-list>
+		<#bad-list-close-object>
 		<#bad-list2>
 		<#bad-long-literal-in-list>
 		<#bad-long-literal-missing-end>
@@ -73,12 +116,14 @@
 		<#bad-object2>
 		<#bad-paths>
 		<#bad-pn-escape>
-		<#bad-prefix-missing-colon>
 		<#bad-prefix>
+		<#bad-prefix-dot>
+		<#bad-prefix-missing-colon>
 		<#bad-quote-in-uri>
 		<#bad-semicolon-after-subject>
 		<#bad-string>
 		<#bad-subject>
+		<#bad-trailing-garbage>
 		<#bad-true-predicate>
 		<#bad-true-subject>
 		<#bad-uri-escape>
@@ -108,6 +153,11 @@
 	mf:action <bad-blank.ttl> ;
 	mf:name "bad-blank" .
 
+<#bad-blank-node-label>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-blank-node-label.nt> ;
+	mf:name "bad-blank-node-label" .
+
 <#bad-blank-predicate>
 	a rdft:TestTurtleNegativeSyntax ;
 	mf:action <bad-blank-predicate.ttl> ;
@@ -118,10 +168,25 @@
 	mf:action <bad-blank-syntax.ttl> ;
 	mf:name "bad-blank-syntax" .
 
-<#bad-bom>
+<#bad-bom-1>
 	a rdft:TestTurtleNegativeSyntax ;
-	mf:action <bad-bom.ttl> ;
-	mf:name "bad-bom" .
+	mf:action <bad-bom-1.ttl> ;
+	mf:name "bad-bom-1" .
+
+<#bad-bom-2>
+	a rdft:TestTurtleNegativeSyntax ;
+	mf:action <bad-bom-2.ttl> ;
+	mf:name "bad-bom-2" .
+
+<#bad-bom-only-1>
+	a rdft:TestTurtleNegativeSyntax ;
+	mf:action <bad-bom-only-1.ttl> ;
+	mf:name "bad-bom-only-1" .
+
+<#bad-bom-only-2>
+	a rdft:TestTurtleNegativeSyntax ;
+	mf:action <bad-bom-only-2.ttl> ;
+	mf:name "bad-bom-only-2" .
 
 <#bad-char-in-local>
 	a rdft:TestTurtleNegativeSyntax ;
@@ -177,6 +242,191 @@
 	a rdft:TestTurtleNegativeSyntax ;
 	mf:action <bad-empty-blank-predicate.ttl> ;
 	mf:name "bad-empty-blank-predicate" .
+
+<#bad-nt-eof-after-blank>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-eof-after-blank.nt> ;
+	mf:name "bad-nt-eof-after-blank" .
+
+<#bad-nt-eof-after-lang>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-eof-after-lang.nt> ;
+	mf:name "bad-nt-eof-after-lang" .
+
+<#bad-nt-eof-after-lang-hyphen>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-eof-after-lang-hyphen.nt> ;
+	mf:name "bad-nt-eof-after-lang-hyphen" .
+
+<#bad-nt-eof-after-lang-subtag>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-eof-after-lang-subtag.nt> ;
+	mf:name "bad-nt-eof-after-lang-subtag" .
+
+<#bad-nt-eof-after-object>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-eof-after-object.nt> ;
+	mf:name "bad-nt-eof-after-object" .
+
+<#bad-nt-eof-after-predicate>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-eof-after-predicate.nt> ;
+	mf:name "bad-nt-eof-after-predicate" .
+
+<#bad-nt-eof-after-string>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-eof-after-string.nt> ;
+	mf:name "bad-nt-eof-after-string" .
+
+<#bad-nt-eof-after-string-escape>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-eof-after-string-escape.nt> ;
+	mf:name "bad-nt-eof-after-string-escape" .
+
+<#bad-nt-eof-after-subject>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-eof-after-subject.nt> ;
+	mf:name "bad-nt-eof-after-subject" .
+
+<#bad-nt-eof-after-underscore>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-eof-after-underscore.nt> ;
+	mf:name "bad-nt-eof-after-underscore" .
+
+<#bad-nt-eof-before-blank>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-eof-before-blank.nt> ;
+	mf:name "bad-nt-eof-before-blank" .
+
+<#bad-nt-eof-before-iri>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-eof-before-iri.nt> ;
+	mf:name "bad-nt-eof-before-iri" .
+
+<#bad-nt-eof-before-lang>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-eof-before-lang.nt> ;
+	mf:name "bad-nt-eof-before-lang" .
+
+<#bad-nt-eof-before-string>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-eof-before-string.nt> ;
+	mf:name "bad-nt-eof-before-string" .
+
+<#bad-nt-eof-before-string-escape>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-eof-before-string-escape.nt> ;
+	mf:name "bad-nt-eof-before-string-escape" .
+
+<#bad-nt-eof-in-iri-path>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-eof-in-iri-path.nt> ;
+	mf:name "bad-nt-eof-in-iri-path" .
+
+<#bad-nt-eof-in-iri-scheme>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-eof-in-iri-scheme.nt> ;
+	mf:name "bad-nt-eof-in-iri-scheme" .
+
+<#bad-nt-eof-in-string>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-eof-in-string.nt> ;
+	mf:name "bad-nt-eof-in-string" .
+
+<#bad-nt-syntax-blank-u00F7>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-syntax-blank-u00F7.nt> ;
+	mf:name "bad-nt-syntax-blank-u00F7" .
+
+<#bad-nt-syntax-blank-u037E>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-syntax-blank-u037E.nt> ;
+	mf:name "bad-nt-syntax-blank-u037E" .
+
+<#bad-nt-syntax-blank-u200B>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-syntax-blank-u200B.nt> ;
+	mf:name "bad-nt-syntax-blank-u200B" .
+
+<#bad-nt-syntax-blank-u200E>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-syntax-blank-u200E.nt> ;
+	mf:name "bad-nt-syntax-blank-u200E" .
+
+<#bad-nt-syntax-blank-u203E>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-syntax-blank-u203E.nt> ;
+	mf:name "bad-nt-syntax-blank-u203E" .
+
+<#bad-nt-syntax-blank-u2041>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-syntax-blank-u2041.nt> ;
+	mf:name "bad-nt-syntax-blank-u2041" .
+
+<#bad-nt-syntax-blank-u206F>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-syntax-blank-u206F.nt> ;
+	mf:name "bad-nt-syntax-blank-u206F" .
+
+<#bad-nt-syntax-blank-u2190>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-syntax-blank-u2190.nt> ;
+	mf:name "bad-nt-syntax-blank-u2190" .
+
+<#bad-nt-syntax-blank-u2BFF>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-syntax-blank-u2BFF.nt> ;
+	mf:name "bad-nt-syntax-blank-u2BFF" .
+
+<#bad-nt-syntax-blank-u2FF0>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-syntax-blank-u2FF0.nt> ;
+	mf:name "bad-nt-syntax-blank-u2FF0" .
+
+<#bad-nt-syntax-cr-in-string>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-syntax-cr-in-string.nt> ;
+	mf:name "bad-nt-syntax-cr-in-string" .
+
+<#bad-nt-syntax-lf-in-string>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-syntax-lf-in-string.nt> ;
+	mf:name "bad-nt-syntax-lf-in-string" .
+
+<#bad-nt-syntax-uri-bar>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-syntax-uri-bar.nt> ;
+	mf:name "bad-nt-syntax-uri-bar" .
+
+<#bad-nt-syntax-uri-caret>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-syntax-uri-caret.nt> ;
+	mf:name "bad-nt-syntax-uri-caret" .
+
+<#bad-nt-syntax-uri-closing-brace>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-syntax-uri-closing-brace.nt> ;
+	mf:name "bad-nt-syntax-uri-closing-brace" .
+
+<#bad-nt-syntax-uri-double-quotes>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-syntax-uri-double-quotes.nt> ;
+	mf:name "bad-nt-syntax-uri-double-quotes" .
+
+<#bad-nt-syntax-uri-grave>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-syntax-uri-grave.nt> ;
+	mf:name "bad-nt-syntax-uri-grave" .
+
+<#bad-nt-syntax-uri-less-than>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-syntax-uri-less-than.nt> ;
+	mf:name "bad-nt-syntax-uri-less-than" .
+
+<#bad-nt-syntax-uri-opening-brace>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-nt-syntax-uri-opening-brace.nt> ;
+	mf:name "bad-nt-syntax-uri-opening-brace" .
 
 <#bad-eof-after-quotes>
 	a rdft:TestTurtleNegativeSyntax ;
@@ -263,6 +513,11 @@
 	mf:action <bad-eof-in-uri-scheme.nt> ;
 	mf:name "bad-eof-in-uri-scheme" .
 
+<#bad-eof-in-utf8-character>
+	a rdft:TestTurtleNegativeSyntax ;
+	mf:action <bad-eof-in-utf8-character.ttl> ;
+	mf:name "bad-eof-in-utf8-character" .
+
 <#bad-equivalence>
 	a rdft:TestTurtleNegativeSyntax ;
 	mf:action <bad-equivalence.ttl> ;
@@ -348,6 +603,11 @@
 	mf:action <bad-list.ttl> ;
 	mf:name "bad-list" .
 
+<#bad-list-close-object>
+	a rdft:TestTurtleNegativeSyntax ;
+	mf:action <bad-list-close-object.ttl> ;
+	mf:name "bad-list-close-object" .
+
 <#bad-list2>
 	a rdft:TestTurtleNegativeSyntax ;
 	mf:action <bad-list2.ttl> ;
@@ -428,6 +688,11 @@
 	mf:action <bad-prefix.ttl> ;
 	mf:name "bad-prefix" .
 
+<#bad-prefix-dot>
+	a rdft:TestTurtleNegativeSyntax ;
+	mf:action <bad-prefix-dot.ttl> ;
+	mf:name "bad-prefix-dot" .
+
 <#bad-prefix-missing-colon>
 	a rdft:TestTurtleNegativeSyntax ;
 	mf:action <bad-prefix-missing-colon.ttl> ;
@@ -452,6 +717,11 @@
 	a rdft:TestTurtleNegativeSyntax ;
 	mf:action <bad-subject.ttl> ;
 	mf:name "bad-subject" .
+
+<#bad-trailing-garbage>
+	a rdft:TestNTriplesNegativeSyntax ;
+	mf:action <bad-trailing-garbage.nt> ;
+	mf:name "bad-trailing-garbage" .
 
 <#bad-true-predicate>
 	a rdft:TestTurtleNegativeSyntax ;
