@@ -155,9 +155,9 @@ eof_test_error(void* stream)
   return 0;
 }
 
-/// A read of a big page hits EOF then fails to read chunks immediately
+/// A read of a file stream hits EOF then fails to read chunks immediately
 static void
-test_read_eof_by_page(const char* const path)
+test_read_eof_file(const char* const path)
 {
   FILE* const f = fopen(path, "w+b");
   assert(f);
@@ -175,13 +175,20 @@ test_read_eof_by_page(const char* const path)
                                              test_statement_sink,
                                              test_end_sink);
 
+  fseek(f, 0L, SEEK_SET);
   serd_reader_start_stream(reader, f, (const uint8_t*)"test", true);
-
   assert(serd_reader_read_chunk(reader) == SERD_SUCCESS);
   assert(serd_reader_read_chunk(reader) == SERD_FAILURE);
   assert(serd_reader_read_chunk(reader) == SERD_FAILURE);
-
   serd_reader_end_stream(reader);
+
+  fseek(f, 0L, SEEK_SET);
+  serd_reader_start_stream(reader, f, (const uint8_t*)"test", false);
+  assert(serd_reader_read_chunk(reader) == SERD_SUCCESS);
+  assert(serd_reader_read_chunk(reader) == SERD_FAILURE);
+  assert(serd_reader_read_chunk(reader) == SERD_FAILURE);
+  serd_reader_end_stream(reader);
+
   serd_reader_free(reader);
   fclose(f);
 }
@@ -212,6 +219,7 @@ test_read_eof_by_byte(void)
   assert(serd_reader_read_chunk(reader) == SERD_SUCCESS);
   assert(serd_reader_read_chunk(reader) == SERD_FAILURE);
 
+  serd_reader_end_stream(reader);
   serd_reader_free(reader);
 }
 
@@ -236,7 +244,7 @@ test_read_nquads_chunks(const char* const path)
 
   fprintf(f,
           "<http://example.org/s> <http://example.org/p3> "
-          "<http://example.org/o3> .\n");
+          "<http://example.org/o3> .");
 
   fseek(f, 0, SEEK_SET);
 
@@ -253,7 +261,9 @@ test_read_nquads_chunks(const char* const path)
   assert(serd_reader_get_handle(reader) == &rt);
   assert(f);
 
-  SerdStatus st = serd_reader_start_stream(reader, f, NULL, false);
+  SerdStatus st = serd_reader_start_source_stream(
+    reader, (SerdSource)fread, (SerdStreamErrorFunc)ferror, f, NULL, 32U);
+
   assert(st == SERD_SUCCESS);
 
   // Read first statement
@@ -297,7 +307,7 @@ test_read_nquads_chunks(const char* const path)
   assert(rt.n_end == 0);
 
   assert(serd_reader_read_chunk(reader) == SERD_FAILURE);
-
+  serd_reader_end_stream(reader);
   serd_reader_free(reader);
   fclose(f);
   remove(path);
@@ -316,8 +326,7 @@ test_read_turtle_chunks(const char* const path)
   fprintf(f, "eg:s eg:p1 eg:o1 ;\n");
   fprintf(f, "     eg:p2 eg:o2 .\n");
   fwrite(&null, sizeof(null), 1, f);
-  fprintf(f, "eg:s eg:p [ eg:sp eg:so ] .\n");
-  fwrite(&null, sizeof(null), 1, f);
+  fprintf(f, "eg:s eg:p [ eg:sp eg:so ] .");
   fseek(f, 0, SEEK_SET);
 
   ReaderTest        rt     = {0, 0, 0, 0};
@@ -333,7 +342,8 @@ test_read_turtle_chunks(const char* const path)
   assert(serd_reader_get_handle(reader) == &rt);
   assert(f);
 
-  SerdStatus st = serd_reader_start_stream(reader, f, NULL, false);
+  SerdStatus st = serd_reader_start_source_stream(
+    reader, (SerdSource)fread, (SerdStreamErrorFunc)ferror, f, NULL, 32U);
   assert(st == SERD_SUCCESS);
 
   // Read base
@@ -393,7 +403,7 @@ test_read_turtle_chunks(const char* const path)
   assert(rt.n_end == 1);
 
   assert(serd_reader_read_chunk(reader) == SERD_FAILURE);
-
+  serd_reader_end_stream(reader);
   serd_reader_free(reader);
   fclose(f);
   remove(path);
@@ -428,7 +438,7 @@ main(void)
   test_read_turtle_chunks(path);
 
   test_read_string();
-  test_read_eof_by_page(path);
+  test_read_eof_file(path);
   test_read_eof_by_byte();
   assert(!remove(path));
 

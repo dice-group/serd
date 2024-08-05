@@ -19,19 +19,15 @@ serd_byte_source_page(SerdByteSource* const source)
   const size_t n_read =
     source->read_func(source->file_buf, 1, source->page_size, source->stream);
 
-  // mitigation for a buffer overread when files end abruptly (zero the rest of the buffer)
-  // https://gitlab.com/drobilla/serd/-/issues/30
-  // TODO revert when properly fixed
-  memset(source->file_buf + n_read, 0, source->page_size - n_read);
-
-  if (n_read == 0) {
-    source->eof         = true;
-    return (source->error_func(source->stream) ? SERD_ERR_UNKNOWN
-                                               : SERD_FAILURE);
+  source->buf_size = n_read;
+  if (n_read < source->page_size) {
+    source->file_buf[n_read] = '\0';
   }
 
-  if (n_read < source->page_size) {
-    source->buf_size = n_read;
+  if (n_read == 0) {
+    source->eof = true;
+    return (source->error_func(source->stream) ? SERD_ERR_UNKNOWN
+                                               : SERD_FAILURE);
   }
 
   return SERD_SUCCESS;
@@ -55,7 +51,7 @@ serd_byte_source_open_source(SerdByteSource* const     source,
   source->stream      = stream;
   source->from_stream = true;
   source->page_size   = page_size;
-  source->buf_size    = page_size;
+  source->buf_size    = 0U;
   source->cur         = cur;
   source->error_func  = error_func;
   source->read_func   = read_func;
