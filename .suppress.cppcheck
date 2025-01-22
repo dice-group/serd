@@ -1,0 +1,5 @@
+assertWithSideEffect
+assignmentInAssert
+normalCheckLevelMaxBranches
+redundantInitialization
+unreadVariable

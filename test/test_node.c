@@ -3,7 +3,7 @@
 
 #undef NDEBUG
 
-#include "serd/serd.h"
+#include <serd/serd.h>
 
 #include <assert.h>
 #include <float.h>
@@ -24,7 +24,7 @@
 #endif
 
 static void
-test_strtod(double dbl, double max_delta)
+check_strtod(const double dbl, const double max_delta)
 {
   char buf[1024];
   snprintf(buf, sizeof(buf), "%f", dbl);
@@ -56,7 +56,7 @@ test_string_to_double(void)
     const double delta = fabs(num - expt_test_nums[i]);
     assert(delta <= DBL_EPSILON);
 
-    test_strtod(expt_test_nums[i], DBL_EPSILON);
+    check_strtod(expt_test_nums[i], DBL_EPSILON);
   }
 }
 
@@ -285,7 +285,5 @@ main(void)
   test_node_from_string();
   test_node_from_substring();
   test_uri_node_from_node();
-
-  printf("Success\n");
   return 0;
 }

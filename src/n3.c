@@ -8,7 +8,7 @@
 #include "try.h"
 #include "uri_utils.h"
 
-#include "serd/serd.h"
+#include <serd/serd.h>
 
 #include <assert.h>
 #include <stdbool.h>
@@ -172,7 +172,7 @@ bad_char(SerdReader* const reader, const char* const fmt, const uint8_t c)
 static SerdStatus
 read_utf8_bytes(SerdReader* const reader,
                 uint8_t           bytes[4],
-                uint32_t* const   size,
+                uint8_t* const    size,
                 const uint8_t     c)
 {
   *size = utf8_num_bytes(c);
@@ -181,9 +181,9 @@ read_utf8_bytes(SerdReader* const reader,
   }
 
   bytes[0] = c;
-  for (unsigned i = 1; i < *size; ++i) {
+  for (uint8_t i = 1U; i < *size; ++i) {
     const int b = peek_byte(reader);
-    if (b == EOF || ((uint8_t)b & 0x80) == 0) {
+    if (b == EOF || ((uint8_t)b & 0x80U) == 0U) {
       return bad_char(reader, "invalid UTF-8 continuation 0x%X\n", (uint8_t)b);
     }
 
@@ -196,7 +196,7 @@ read_utf8_bytes(SerdReader* const reader,
 static SerdStatus
 read_utf8_character(SerdReader* const reader, const Ref dest, const uint8_t c)
 {
-  uint32_t   size     = 0;
+  uint8_t    size     = 0U;
   uint8_t    bytes[4] = {0, 0, 0, 0};
   SerdStatus st       = read_utf8_bytes(reader, bytes, &size, c);
   if (st) {
@@ -214,7 +214,7 @@ read_utf8_code(SerdReader* const reader,
                uint32_t* const   code,
                const uint8_t     c)
 {
-  uint32_t   size     = 0;
+  uint8_t    size     = 0U;
   uint8_t    bytes[4] = {0, 0, 0, 0};
   SerdStatus st       = read_utf8_bytes(reader, bytes, &size, c);
   if (st) {
@@ -740,12 +740,12 @@ read_IRIREF(SerdReader* const reader, Ref* const dest)
                    SERD_ERR_BAD_SYNTAX,
                    "invalid IRI character (escape %%%02X)\n",
                    (unsigned)c);
-        if (reader->strict) {
+        if (!reader->strict) {
+          st = SERD_FAILURE;
+          push_byte(reader, *dest, c);
+        } else {
           break;
         }
-
-        st = SERD_FAILURE;
-        push_byte(reader, *dest, c);
       } else if (!(c & 0x80)) {
         push_byte(reader, *dest, c);
       } else if (read_utf8_character(reader, *dest, (uint8_t)c)) {
@@ -925,10 +925,10 @@ read_verb(SerdReader* const reader, Ref* const dest)
   */
   *dest = push_node(reader, SERD_CURIE, "", 0);
 
-  SerdStatus st      = read_PN_PREFIX(reader, *dest);
-  bool       ate_dot = false;
-  SerdNode*  node    = deref(reader, *dest);
-  const int  next    = peek_byte(reader);
+  SerdStatus            st      = read_PN_PREFIX(reader, *dest);
+  bool                  ate_dot = false;
+  const SerdNode* const node    = deref(reader, *dest);
+  const int             next    = peek_byte(reader);
   if (!st && node->n_bytes == 1 && node->buf[0] == 'a' && next != ':' &&
       !is_PN_CHARS_BASE((uint32_t)next)) {
     pop_node(reader, *dest);
@@ -1540,7 +1540,7 @@ token_equals(SerdReader* const reader,
              const char* const tok,
              const size_t      n)
 {
-  SerdNode* const node = deref(reader, ref);
+  const SerdNode* const node = deref(reader, ref);
   if (!node || node->n_bytes != n) {
     return false;
   }

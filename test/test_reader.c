@@ -3,7 +3,7 @@
 
 #undef NDEBUG
 
-#include "serd/serd.h"
+#include <serd/serd.h>
 
 #ifdef _WIN32
 #  include <windows.h>
@@ -26,7 +26,7 @@ typedef struct {
 } ReaderTest;
 
 static SerdStatus
-test_base_sink(void* const handle, const SerdNode* const uri)
+base_sink(void* const handle, const SerdNode* const uri)
 {
   (void)uri;
 
@@ -36,9 +36,9 @@ test_base_sink(void* const handle, const SerdNode* const uri)
 }
 
 static SerdStatus
-test_prefix_sink(void* const           handle,
-                 const SerdNode* const name,
-                 const SerdNode* const uri)
+prefix_sink(void* const           handle,
+            const SerdNode* const name,
+            const SerdNode* const uri)
 {
   (void)name;
   (void)uri;
@@ -49,14 +49,14 @@ test_prefix_sink(void* const           handle,
 }
 
 static SerdStatus
-test_statement_sink(void* const           handle,
-                    SerdStatementFlags    flags,
-                    const SerdNode* const graph,
-                    const SerdNode* const subject,
-                    const SerdNode* const predicate,
-                    const SerdNode* const object,
-                    const SerdNode* const object_datatype,
-                    const SerdNode* const object_lang)
+statement_sink(void* const           handle,
+               SerdStatementFlags    flags,
+               const SerdNode* const graph,
+               const SerdNode* const subject,
+               const SerdNode* const predicate,
+               const SerdNode* const object,
+               const SerdNode* const object_datatype,
+               const SerdNode* const object_lang)
 {
   (void)flags;
   (void)graph;
@@ -72,7 +72,7 @@ test_statement_sink(void* const           handle,
 }
 
 static SerdStatus
-test_end_sink(void* const handle, const SerdNode* const node)
+end_sink(void* const handle, const SerdNode* const node)
 {
   (void)node;
 
@@ -85,13 +85,8 @@ static void
 test_read_string(void)
 {
   ReaderTest        rt     = {0, 0, 0, 0};
-  SerdReader* const reader = serd_reader_new(SERD_TURTLE,
-                                             &rt,
-                                             NULL,
-                                             test_base_sink,
-                                             test_prefix_sink,
-                                             test_statement_sink,
-                                             test_end_sink);
+  SerdReader* const reader = serd_reader_new(
+    SERD_TURTLE, &rt, NULL, base_sink, prefix_sink, statement_sink, end_sink);
 
   assert(reader);
   assert(serd_reader_get_handle(reader) == &rt);
@@ -113,7 +108,10 @@ test_read_string(void)
 
 /// Reads a null byte after a statement, then succeeds again (like a socket)
 static size_t
-eof_test_read(void* buf, size_t size, size_t nmemb, void* stream)
+eof_test_read(void* const  buf,
+              const size_t size,
+              const size_t nmemb,
+              void* const  stream)
 {
   assert(size == 1);
   assert(nmemb == 1);
@@ -149,7 +147,7 @@ eof_test_read(void* buf, size_t size, size_t nmemb, void* stream)
 }
 
 static int
-eof_test_error(void* stream)
+eof_test_error(void* const stream)
 {
   (void)stream;
   return 0;
@@ -167,13 +165,8 @@ test_read_eof_file(const char* const path)
   fseek(f, 0L, SEEK_SET);
 
   ReaderTest        rt     = {0, 0, 0, 0};
-  SerdReader* const reader = serd_reader_new(SERD_TURTLE,
-                                             &rt,
-                                             NULL,
-                                             test_base_sink,
-                                             test_prefix_sink,
-                                             test_statement_sink,
-                                             test_end_sink);
+  SerdReader* const reader = serd_reader_new(
+    SERD_TURTLE, &rt, NULL, base_sink, prefix_sink, statement_sink, end_sink);
 
   fseek(f, 0L, SEEK_SET);
   serd_reader_start_stream(reader, f, (const uint8_t*)"test", true);
@@ -190,7 +183,7 @@ test_read_eof_file(const char* const path)
   serd_reader_end_stream(reader);
 
   serd_reader_free(reader);
-  fclose(f);
+  assert(!fclose(f));
 }
 
 // A byte-wise reader hits EOF once then continues (like a socket)
@@ -198,13 +191,8 @@ static void
 test_read_eof_by_byte(void)
 {
   ReaderTest        rt     = {0, 0, 0, 0};
-  SerdReader* const reader = serd_reader_new(SERD_TURTLE,
-                                             &rt,
-                                             NULL,
-                                             test_base_sink,
-                                             test_prefix_sink,
-                                             test_statement_sink,
-                                             test_end_sink);
+  SerdReader* const reader = serd_reader_new(
+    SERD_TURTLE, &rt, NULL, base_sink, prefix_sink, statement_sink, end_sink);
 
   size_t n_reads = 0U;
   serd_reader_start_source_stream(reader,
@@ -229,6 +217,7 @@ test_read_nquads_chunks(const char* const path)
   static const char null = 0;
 
   FILE* const f = fopen(path, "w+b");
+  assert(f);
 
   // Write two statements, a null separator, then another statement
 
@@ -249,13 +238,8 @@ test_read_nquads_chunks(const char* const path)
   fseek(f, 0, SEEK_SET);
 
   ReaderTest        rt     = {0, 0, 0, 0};
-  SerdReader* const reader = serd_reader_new(SERD_NQUADS,
-                                             &rt,
-                                             NULL,
-                                             test_base_sink,
-                                             test_prefix_sink,
-                                             test_statement_sink,
-                                             test_end_sink);
+  SerdReader* const reader = serd_reader_new(
+    SERD_NQUADS, &rt, NULL, base_sink, prefix_sink, statement_sink, end_sink);
 
   assert(reader);
   assert(serd_reader_get_handle(reader) == &rt);
@@ -309,8 +293,9 @@ test_read_nquads_chunks(const char* const path)
   assert(serd_reader_read_chunk(reader) == SERD_FAILURE);
   serd_reader_end_stream(reader);
   serd_reader_free(reader);
-  fclose(f);
-  remove(path);
+
+  assert(!fclose(f));
+  assert(!remove(path));
 }
 
 static void
@@ -319,6 +304,7 @@ test_read_turtle_chunks(const char* const path)
   static const char null = 0;
 
   FILE* const f = fopen(path, "w+b");
+  assert(f);
 
   // Write two statements separated by null characters
   fprintf(f, "@base <http://example.org/base/> .\n");
@@ -330,13 +316,8 @@ test_read_turtle_chunks(const char* const path)
   fseek(f, 0, SEEK_SET);
 
   ReaderTest        rt     = {0, 0, 0, 0};
-  SerdReader* const reader = serd_reader_new(SERD_TURTLE,
-                                             &rt,
-                                             NULL,
-                                             test_base_sink,
-                                             test_prefix_sink,
-                                             test_statement_sink,
-                                             test_end_sink);
+  SerdReader* const reader = serd_reader_new(
+    SERD_TURTLE, &rt, NULL, base_sink, prefix_sink, statement_sink, end_sink);
 
   assert(reader);
   assert(serd_reader_get_handle(reader) == &rt);
@@ -405,8 +386,8 @@ test_read_turtle_chunks(const char* const path)
   assert(serd_reader_read_chunk(reader) == SERD_FAILURE);
   serd_reader_end_stream(reader);
   serd_reader_free(reader);
-  fclose(f);
-  remove(path);
+  assert(!fclose(f));
+  assert(!remove(path));
 }
 
 int

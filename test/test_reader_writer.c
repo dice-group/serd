@@ -3,7 +3,7 @@
 
 #undef NDEBUG
 
-#include "serd/serd.h"
+#include <serd/serd.h>
 
 #ifdef _WIN32
 #  include <windows.h>
@@ -54,14 +54,14 @@ static const char* const doc_string =
   "( eg:o ) eg:t eg:u .\n";
 
 static SerdStatus
-test_statement_sink(void*              handle,
-                    SerdStatementFlags flags,
-                    const SerdNode*    graph,
-                    const SerdNode*    subject,
-                    const SerdNode*    predicate,
-                    const SerdNode*    object,
-                    const SerdNode*    object_datatype,
-                    const SerdNode*    object_lang)
+test_statement_sink(void* const              handle,
+                    const SerdStatementFlags flags,
+                    const SerdNode* const    graph,
+                    const SerdNode* const    subject,
+                    const SerdNode* const    predicate,
+                    const SerdNode* const    object,
+                    const SerdNode* const    object_datatype,
+                    const SerdNode* const    object_lang)
 {
   (void)flags;
   (void)subject;
@@ -146,9 +146,11 @@ test_write_errors(void)
 static void
 test_writer(const char* const path)
 {
-  FILE*    fd  = fopen(path, "wb");
-  SerdEnv* env = serd_env_new(NULL);
+  FILE* const fd = fopen(path, "wb");
   assert(fd);
+
+  SerdEnv* const env = serd_env_new(NULL);
+  assert(env);
 
   SerdWriter* writer =
     serd_writer_new(SERD_TURTLE, (SerdStyle)0, env, NULL, serd_file_sink, fd);
@@ -164,8 +166,9 @@ test_writer(const char* const path)
   assert(serd_writer_end_anon(writer, NULL));
   assert(serd_writer_get_env(writer) == env);
 
-  uint8_t  buf[] = {0x80, 0, 0, 0, 0};
-  SerdNode s     = serd_node_from_string(SERD_URI, USTR(""));
+  const uint8_t buf[] = {0x80, 0, 0, 0, 0};
+
+  SerdNode s = serd_node_from_string(SERD_URI, USTR(""));
   SerdNode p = serd_node_from_string(SERD_URI, USTR("http://example.org/pred"));
   SerdNode o = serd_node_from_string(SERD_LITERAL, buf);
 
@@ -260,11 +263,11 @@ test_writer(const char* const path)
   serd_free(out);
 
   serd_env_free(env);
-  fclose(fd);
+  assert(!fclose(fd));
 }
 
 static void
-test_reader(const char* path)
+test_reader(const char* const path)
 {
   ReaderTest* rt     = (ReaderTest*)calloc(1, sizeof(ReaderTest));
   SerdReader* reader = serd_reader_new(
@@ -332,6 +335,5 @@ main(void)
   assert(!remove(path));
   free(path);
 
-  printf("Success\n");
   return 0;
 }

@@ -4,10 +4,11 @@
 #include "reader.h"
 
 #include "byte_source.h"
+#include "serd_internal.h"
 #include "stack.h"
 #include "system.h"
 
-#include "serd_internal.h"
+#include <serd/serd.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -127,8 +128,8 @@ pop_node(SerdReader* const reader, const Ref ref)
     SERD_STACK_ASSERT_TOP(reader, ref);
     --reader->n_allocs;
 #endif
-    SerdNode* const node = deref(reader, ref);
-    uint8_t* const  top  = reader->stack.buf + reader->stack.size;
+    SerdNode* const      node = deref(reader, ref);
+    const uint8_t* const top  = reader->stack.buf + reader->stack.size;
     serd_stack_pop_aligned(&reader->stack, (size_t)(top - (uint8_t*)node));
   }
   return 0;

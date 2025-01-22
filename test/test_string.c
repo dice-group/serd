@@ -3,11 +3,10 @@
 
 #undef NDEBUG
 
-#include "serd/serd.h"
+#include <serd/serd.h>
 
 #include <assert.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 static void
@@ -57,7 +56,5 @@ main(void)
 {
   test_strlen();
   test_strerror();
-
-  printf("Success\n");
   return 0;
 }

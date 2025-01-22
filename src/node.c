@@ -6,7 +6,7 @@
 #include "base64.h"
 #include "string_utils.h"
 
-#include "serd/serd.h"
+#include <serd/serd.h>
 
 #include <assert.h>
 #include <float.h>
@@ -16,15 +16,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#ifdef _WIN32
-#  ifndef isnan
-#    define isnan(x) _isnan(x)
-#  endif
-#  ifndef isinf
-#    define isinf(x) (!_finite(x))
-#  endif
-#endif
 
 static size_t
 serd_uri_string_length(const SerdURI* const uri)

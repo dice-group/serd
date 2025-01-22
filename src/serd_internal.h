@@ -4,7 +4,7 @@
 #ifndef SERD_SRC_SERD_INTERNAL_H
 #define SERD_SRC_SERD_INTERNAL_H
 
-#include "serd/serd.h"
+#include <serd/serd.h>
 
 #include <stdio.h>
 
@@ -20,7 +20,9 @@
 /* Error reporting */
 
 static inline void
-serd_error(SerdErrorSink error_sink, void* handle, const SerdError* e)
+serd_error(const SerdErrorSink    error_sink,
+           void* const            handle,
+           const SerdError* const e)
 {
   if (error_sink) {
     error_sink(handle, e);

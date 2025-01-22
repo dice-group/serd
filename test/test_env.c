@@ -3,7 +3,7 @@
 
 #undef NDEBUG
 
-#include "serd/serd.h"
+#include <serd/serd.h>
 
 #include <assert.h>
 #include <stdint.h>
@@ -13,7 +13,9 @@
 #define USTR(s) ((const uint8_t*)(s))
 
 static SerdStatus
-count_prefixes(void* handle, const SerdNode* name, const SerdNode* uri)
+count_prefixes(void* const           handle,
+               const SerdNode* const name,
+               const SerdNode* const uri)
 {
   (void)name;
   (void)uri;
