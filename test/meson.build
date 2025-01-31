@@ -212,6 +212,17 @@ test_suites = {
     '--',
     '-b',
   ],
+  'eof': [
+    files('extra/eof/manifest.ttl'),
+    ns_serdtest + 'eof/',
+  ],
+  'eof_lax': [
+    '--ignore',
+    files('extra/eof/manifest.ttl'),
+    ns_serdtest + 'eof/',
+    '--',
+    '-l'
+  ],
   'fast': [
     files('extra/good/manifest.ttl'),
     ns_serdtest + 'good/',
