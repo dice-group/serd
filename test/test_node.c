@@ -71,8 +71,8 @@ test_double_to_node(void)
                                   -16.00001,
                                   5.000000005,
                                   0.0000000001,
-                                  NAN,
-                                  INFINITY};
+                                  (double)NAN,
+                                  (double)INFINITY};
 
   const char* dbl_test_strs[] = {"0.0",
                                  "9.0",
@@ -123,6 +123,7 @@ test_blob_to_node(void)
 {
   for (size_t size = 1; size < 256; ++size) {
     uint8_t* const data = (uint8_t*)malloc(size);
+    assert(data);
     for (size_t i = 0; i < size; ++i) {
       data[i] = (uint8_t)((size + i) % 256);
     }

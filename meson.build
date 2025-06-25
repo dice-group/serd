@@ -39,7 +39,6 @@ if cc.get_id() in ['clang', 'emscripten']
       '-Wno-cast-function-type-strict',
       '-Wno-cast-qual',
       '-Wno-declaration-after-statement',
-      '-Wno-double-promotion',
       '-Wno-format-nonliteral',
       '-Wno-padded',
       '-Wno-switch-default',
@@ -223,6 +222,7 @@ libserd = library(
   darwin_versions: [major_version + '.0.0', meson.project_version()],
   dependencies: m_dep,
   gnu_symbol_visibility: 'hidden',
+  implicit_include_directories: false,
   include_directories: include_dirs,
   install: true,
   soversion: soversion,
@@ -236,7 +236,7 @@ serd_dep = declare_dependency(
   link_with: libserd,
 )
 
-# Generage pkg-config file for external dependants
+# Generate pkg-config file for external dependants
 pkg.generate(
   libserd,
   description: 'Lightweight C library for working with RDF data',
@@ -269,6 +269,7 @@ if not get_option('tools').disabled()
     files('src/serdi.c'),
     c_args: c_suppressions + platform_c_args,
     dependencies: serd_dep,
+    implicit_include_directories: false,
     install: true,
     link_args: tool_link_args,
   )

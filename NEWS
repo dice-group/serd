@@ -1,10 +1,15 @@
 serd (0.32.5) unstable; urgency=medium
 
+  * Drop graphs when writing Turtle output
   * Fix handling of some invalid EOF cases in lax mode
   * Fix invalid characters in error messages
+  * Fix reading numbers with no space before the final dot
+  * Fix reading prefix names that start with "true." or "false."
+  * Refuse to write incoherent statements
   * Remove project and version number from man page OS field
+  * Write a blank line between statements and Turtle/TriG directives
 
- -- David Robillard <d@drobilla.net>  Thu, 30 Jan 2025 20:28:00 +0000
+ -- David Robillard <d@drobilla.net>  Fri, 11 Apr 2025 16:16:54 +0000
 
 serd (0.32.4) stable; urgency=medium
 
@@ -173,7 +178,7 @@ serd (0.28.0) stable; urgency=medium
   * Add support for reading from a user provided callback
   * Fix hangs when reading corrupt UTF-8
   * Fix parsing of hex escapes in file URIs (thanks Johannes Mueller)
-  * Fix strict parsing of abolute URI schemes
+  * Fix strict parsing of absolute URI schemes
   * Gracefully handle applications that write corrupt UTF-8
 
  -- David Robillard <d@drobilla.net>  Fri, 21 Jul 2017 06:28:47 +0000

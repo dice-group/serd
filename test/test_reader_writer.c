@@ -1,4 +1,4 @@
-// Copyright 2011-2024 David Robillard <d@drobilla.net>
+// Copyright 2011-2025 David Robillard <d@drobilla.net>
 // SPDX-License-Identifier: ISC
 
 #undef NDEBUG
@@ -103,42 +103,58 @@ quiet_error_sink(void* const handle, const SerdError* const e)
 }
 
 static void
+check_write_error_offset(const SerdSyntax syntax,
+                         const size_t     offset,
+                         const SerdStatus expected_status)
+{
+  ErrorContext    ctx   = {0U, offset};
+  const SerdStyle style = (SerdStyle)(SERD_STYLE_STRICT | SERD_STYLE_CURIED);
+  SerdEnv* const  env   = serd_env_new(NULL);
+  assert(env);
+
+  SerdWriter* const writer =
+    serd_writer_new(syntax, style, env, NULL, faulty_sink, &ctx);
+  assert(writer);
+
+  SerdReader* const reader =
+    serd_reader_new(SERD_TRIG,
+                    writer,
+                    NULL,
+                    (SerdBaseSink)serd_writer_set_base_uri,
+                    (SerdPrefixSink)serd_writer_set_prefix,
+                    (SerdStatementSink)serd_writer_write_statement,
+                    (SerdEndSink)serd_writer_end_anon);
+  assert(reader);
+
+  serd_writer_set_error_sink(writer, quiet_error_sink, NULL);
+  serd_reader_set_error_sink(reader, quiet_error_sink, NULL);
+
+  const SerdStatus rst = serd_reader_read_string(reader, USTR(doc_string));
+  const SerdStatus wst = serd_writer_finish(writer);
+
+  serd_reader_free(reader);
+  serd_writer_free(writer);
+  serd_env_free(env);
+
+  const SerdStatus st = rst ? rst : wst;
+  assert(st == expected_status);
+}
+
+static void
 test_write_errors(void)
 {
-  ErrorContext    ctx   = {0U, 0U};
-  const SerdStyle style = (SerdStyle)(SERD_STYLE_STRICT | SERD_STYLE_CURIED);
+  // Syntax-keyed array of output document sizes
+  static const size_t max_offsets[] = {0, 452, 1911, 2003, 466};
 
-  const size_t max_offsets[] = {0, 462, 1911, 2003, 462};
-
-  // Test errors at different offsets to hit different code paths
   for (unsigned s = 1; s <= (unsigned)SERD_TRIG; ++s) {
     const SerdSyntax syntax = (SerdSyntax)s;
+
+    // Check successfully writing with enough space
+    check_write_error_offset(syntax, max_offsets[s], SERD_SUCCESS);
+
+    // Check write error at every offset in the output
     for (size_t o = 0; o < max_offsets[s]; ++o) {
-      ctx.n_written    = 0;
-      ctx.error_offset = o;
-
-      SerdEnv* const    env = serd_env_new(NULL);
-      SerdWriter* const writer =
-        serd_writer_new(syntax, style, env, NULL, faulty_sink, &ctx);
-
-      SerdReader* const reader =
-        serd_reader_new(SERD_TRIG,
-                        writer,
-                        NULL,
-                        (SerdBaseSink)serd_writer_set_base_uri,
-                        (SerdPrefixSink)serd_writer_set_prefix,
-                        (SerdStatementSink)serd_writer_write_statement,
-                        (SerdEndSink)serd_writer_end_anon);
-
-      serd_reader_set_error_sink(reader, quiet_error_sink, NULL);
-      serd_writer_set_error_sink(writer, quiet_error_sink, NULL);
-
-      const SerdStatus st = serd_reader_read_string(reader, USTR(doc_string));
-      assert(st == SERD_ERR_BAD_WRITE);
-
-      serd_reader_free(reader);
-      serd_writer_free(writer);
-      serd_env_free(env);
+      check_write_error_offset(syntax, o, SERD_ERR_BAD_WRITE);
     }
   }
 }
@@ -168,15 +184,19 @@ test_writer(const char* const path)
 
   const uint8_t buf[] = {0x80, 0, 0, 0, 0};
 
-  SerdNode s = serd_node_from_string(SERD_URI, USTR(""));
-  SerdNode p = serd_node_from_string(SERD_URI, USTR("http://example.org/pred"));
-  SerdNode o = serd_node_from_string(SERD_LITERAL, buf);
+  const SerdNode s = serd_node_from_string(SERD_URI, USTR(""));
+  const SerdNode p =
+    serd_node_from_string(SERD_URI, USTR("http://example.org/pred"));
+  const SerdNode o = serd_node_from_string(SERD_LITERAL, buf);
+  const SerdNode t = serd_node_from_string(SERD_URI, USTR("urn:Type"));
+  const SerdNode l = serd_node_from_string(SERD_LITERAL, USTR("en"));
 
-  // Write 3 invalid statements (should write nothing)
+  // Attempt to write invalid statements (should write nothing)
   const SerdNode* junk[][5] = {{&s, &p, &SERD_NODE_NULL, NULL, NULL},
                                {&s, &SERD_NODE_NULL, &o, NULL, NULL},
                                {&SERD_NODE_NULL, &p, &o, NULL, NULL},
                                {&s, &o, &o, NULL, NULL},
+                               {&s, &o, &o, &t, &l},
                                {&o, &p, &o, NULL, NULL},
                                {&s, &p, &SERD_NODE_NULL, NULL, NULL}};
   for (size_t i = 0; i < sizeof(junk) / (sizeof(SerdNode*) * 5); ++i) {
@@ -190,13 +210,12 @@ test_writer(const char* const path)
                                        junk[i][4]));
   }
 
-  const SerdNode  t         = serd_node_from_string(SERD_URI, USTR("urn:Type"));
-  const SerdNode  l         = serd_node_from_string(SERD_LITERAL, USTR("en"));
+  // Write some valid statements
   const SerdNode* good[][5] = {{&s, &p, &o, NULL, NULL},
+                               {&s, &p, &lit, NULL, NULL},
                                {&s, &p, &o, &SERD_NODE_NULL, &SERD_NODE_NULL},
                                {&s, &p, &o, &t, NULL},
                                {&s, &p, &o, NULL, &l},
-                               {&s, &p, &o, &t, &l},
                                {&s, &p, &o, &t, &SERD_NODE_NULL},
                                {&s, &p, &o, &SERD_NODE_NULL, &l},
                                {&s, &p, &o, NULL, &SERD_NODE_NULL},
@@ -222,46 +241,7 @@ test_writer(const char* const path)
   assert(!serd_writer_write_statement(
     writer, 0, NULL, &s, &p, &bad_uri, NULL, NULL));
 
-  // Write 1 valid statement
-  o = serd_node_from_string(SERD_LITERAL, USTR("hello"));
-  assert(!serd_writer_write_statement(writer, 0, NULL, &s, &p, &o, NULL, NULL));
-
   serd_writer_free(writer);
-
-  // Test chunk sink
-  SerdChunk chunk = {NULL, 0};
-  writer          = serd_writer_new(
-    SERD_TURTLE, (SerdStyle)0, env, NULL, serd_chunk_sink, &chunk);
-
-  o = serd_node_from_string(SERD_URI, USTR("http://example.org/base"));
-  assert(!serd_writer_set_base_uri(writer, &o));
-
-  serd_writer_free(writer);
-  uint8_t* out = serd_chunk_sink_finish(&chunk);
-
-  assert(!strcmp((const char*)out, "@base <http://example.org/base> .\n"));
-  serd_free(out);
-
-  // Test writing empty node
-  SerdNode nothing = serd_node_from_string(SERD_NOTHING, USTR(""));
-
-  chunk.buf = NULL;
-  chunk.len = 0;
-  writer    = serd_writer_new(
-    SERD_TURTLE, (SerdStyle)0, env, NULL, serd_chunk_sink, &chunk);
-
-  assert(!serd_writer_write_statement(
-    writer, 0, NULL, &s, &p, &nothing, NULL, NULL));
-
-  assert(
-    !strncmp((const char*)chunk.buf, "<>\n\t<http://example.org/pred> ", 30));
-
-  serd_writer_free(writer);
-  out = serd_chunk_sink_finish(&chunk);
-
-  assert(!strcmp((const char*)out, "<>\n\t<http://example.org/pred>  .\n"));
-  serd_free(out);
-
   serd_env_free(env);
   assert(!fclose(fd));
 }
@@ -269,7 +249,9 @@ test_writer(const char* const path)
 static void
 test_reader(const char* const path)
 {
-  ReaderTest* rt     = (ReaderTest*)calloc(1, sizeof(ReaderTest));
+  ReaderTest* const rt = (ReaderTest*)calloc(1, sizeof(ReaderTest));
+  assert(rt);
+
   SerdReader* reader = serd_reader_new(
     SERD_TURTLE, rt, free, NULL, NULL, test_statement_sink, NULL);
 
@@ -297,7 +279,7 @@ test_reader(const char* const path)
 
   const SerdStatus st = serd_reader_read_file(reader, USTR(path));
   assert(!st);
-  assert(rt->n_statement == 13);
+  assert(rt->n_statement == 12);
   assert(rt->graph && rt->graph->buf &&
          !strcmp((const char*)rt->graph->buf, "http://example.org/"));
 
@@ -322,6 +304,7 @@ main(void)
   const size_t      ttl_name_len = strlen(ttl_name);
   const size_t      path_len     = tmp_len + 1 + ttl_name_len;
   char* const       path         = (char*)calloc(path_len + 1, 1);
+  assert(path);
 
   memcpy(path, tmp, tmp_len + 1);
   path[tmp_len] = '/';

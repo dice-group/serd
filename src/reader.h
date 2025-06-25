@@ -94,6 +94,9 @@ set_blank_id(SerdReader* reader, Ref ref, size_t buf_size);
 SerdNode*
 deref(SerdReader* reader, Ref ref);
 
+bool
+pop_last_node_char(SerdReader* reader, SerdNode* node);
+
 Ref
 pop_node(SerdReader* reader, Ref ref);
 
@@ -130,7 +133,7 @@ skip_byte(SerdReader* const reader, const int byte)
   return serd_byte_source_advance(&reader->source);
 }
 
-static inline int SERD_NODISCARD
+SERD_NODISCARD static inline int
 eat_byte_safe(SerdReader* const reader, const int byte)
 {
   (void)byte;
@@ -141,7 +144,7 @@ eat_byte_safe(SerdReader* const reader, const int byte)
   return byte;
 }
 
-static inline int SERD_NODISCARD
+SERD_NODISCARD static inline int
 eat_byte_check(SerdReader* const reader, const int byte)
 {
   const int c = peek_byte(reader);

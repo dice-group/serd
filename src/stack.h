@@ -20,9 +20,6 @@ typedef struct {
   size_t   size;     ///< Conceptual size of stack in buf
 } SerdStack;
 
-/** An offset to start the stack at. Note 0 is reserved for NULL. */
-#define SERD_STACK_BOTTOM sizeof(void*)
-
 static inline SerdStack
 serd_stack_new(const size_t size)
 {
@@ -79,7 +76,7 @@ serd_stack_push_aligned(SerdStack* const stack,
   serd_stack_push(stack, 1);
 
   // Push padding if necessary
-  const size_t pad = align - stack->size % align;
+  const size_t pad = align - (stack->size % align);
   serd_stack_push(stack, pad);
 
   // Set top of stack to pad count so we can properly pop later

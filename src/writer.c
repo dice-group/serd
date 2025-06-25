@@ -1,4 +1,4 @@
-// Copyright 2011-2023 David Robillard <d@drobilla.net>
+// Copyright 2011-2025 David Robillard <d@drobilla.net>
 // SPDX-License-Identifier: ISC
 
 #include "attributes.h"
@@ -37,19 +37,11 @@ typedef enum {
 
 typedef struct {
   ContextType type;
+  bool        comma_indented;
   SerdNode    graph;
   SerdNode    subject;
   SerdNode    predicate;
-  bool        predicates;
-  bool        comma_indented;
 } WriteContext;
-
-static const WriteContext WRITE_CONTEXT_NULL = {CTX_NAMED,
-                                                {0, 0, 0, 0, SERD_NOTHING},
-                                                {0, 0, 0, 0, SERD_NOTHING},
-                                                {0, 0, 0, 0, SERD_NOTHING},
-                                                0U,
-                                                0U};
 
 typedef enum {
   SEP_NONE,        ///< Sentinel after "nothing"
@@ -205,7 +197,7 @@ push_context(SerdWriter* const writer,
   *(WriteContext*)top = writer->context;
 
   // Update the current context
-  const WriteContext current = {type, graph, subject, predicate, 0U, 0U};
+  const WriteContext current = {type, false, graph, subject, predicate};
   writer->context            = current;
 }
 
@@ -238,7 +230,7 @@ sink(const void* const buf, const size_t len, SerdWriter* const writer)
   return written;
 }
 
-SERD_NODISCARD static inline SerdStatus
+SERD_NODISCARD static SerdStatus
 esink(const void* const buf, const size_t len, SerdWriter* const writer)
 {
   return sink(buf, len, writer) == len ? SERD_SUCCESS : SERD_ERR_BAD_WRITE;
@@ -550,10 +542,13 @@ write_sep(SerdWriter* const writer, const Sep sep)
                         : 0);
   }
 
-  // If this is the first comma, bump the increment for the following object
+  // Adjust indentation for object comma if necessary
   if (sep == SEP_END_O && !writer->context.comma_indented) {
     ++writer->indent;
     writer->context.comma_indented = true;
+  } else if (sep == SEP_END_P && writer->context.comma_indented) {
+    --writer->indent;
+    writer->context.comma_indented = false;
   }
 
   // Write newline or space before separator if necessary
@@ -579,7 +574,6 @@ write_sep(SerdWriter* const writer, const Sep sep)
   // Reset context and write a blank line after ends of subjects
   if (sep == SEP_END_S) {
     writer->indent                 = writer->context.graph.type ? 1 : 0;
-    writer->context.predicates     = false;
     writer->context.comma_indented = false;
     TRY(st, esink("\n", 1, writer));
   }
@@ -612,7 +606,6 @@ reset_context(SerdWriter* const writer, const unsigned flags)
   writer->context.type           = CTX_NAMED;
   writer->context.subject.type   = SERD_NOTHING;
   writer->context.predicate.type = SERD_NOTHING;
-  writer->context.predicates     = false;
   writer->context.comma_indented = false;
   return SERD_SUCCESS;
 }
@@ -864,7 +857,6 @@ write_pred(SerdWriter* const        writer,
   TRY(st, write_sep(writer, SEP_P_O));
 
   copy_node(&writer->context.predicate, pred);
-  writer->context.predicates     = true;
   writer->context.comma_indented = false;
   return st;
 }
@@ -926,16 +918,23 @@ serd_writer_write_statement(SerdWriter* const     writer,
 
   SerdStatus st = SERD_SUCCESS;
 
-  if (!is_resource(subject) || !is_resource(predicate) || !object->buf) {
-    return SERD_ERR_BAD_ARG;
-  }
-
   if ((flags & SERD_LIST_O_BEGIN) &&
       !strcmp((const char*)object->buf, NS_RDF "nil")) {
     /* Tolerate LIST_O_BEGIN for "()" objects, even though it doesn't make
        much sense, because older versions handled this gracefully.  Consider
        making this an error in a later major version. */
     flags &= (SerdStatementFlags)~SERD_LIST_O_BEGIN;
+  }
+
+  // Refuse to write incoherent statements
+  if (!is_resource(subject) || !is_resource(predicate) ||
+      object->type == SERD_NOTHING || !object->buf ||
+      (datatype && datatype->buf && lang && lang->buf) ||
+      ((flags & SERD_ANON_S_BEGIN) && (flags & SERD_LIST_S_BEGIN)) ||
+      ((flags & SERD_EMPTY_S) && (flags & SERD_LIST_S_BEGIN)) ||
+      ((flags & SERD_ANON_O_BEGIN) && (flags & SERD_LIST_O_BEGIN)) ||
+      ((flags & SERD_EMPTY_O) && (flags & SERD_LIST_O_BEGIN))) {
+    return SERD_ERR_BAD_ARG;
   }
 
   // Simple case: write a line of NTriples or NQuads
@@ -953,22 +952,20 @@ serd_writer_write_statement(SerdWriter* const     writer,
     return SERD_SUCCESS;
   }
 
-  SERD_DISABLE_NULL_WARNINGS
-
   // Separate graphs if necessary
-  if ((graph && !serd_node_equals(graph, &writer->context.graph)) ||
-      (!graph && writer->context.graph.type)) {
+  const SerdNode* const out_graph = writer->syntax == SERD_TRIG ? graph : NULL;
+  if ((out_graph && !serd_node_equals(out_graph, &writer->context.graph)) ||
+      (!out_graph && writer->context.graph.type)) {
     TRY(st, terminate_context(writer));
     reset_context(writer, RESET_GRAPH | RESET_INDENT);
     TRY(st, write_newline(writer));
-    if (graph) {
-      TRY(st, write_node(writer, graph, datatype, lang, FIELD_GRAPH, flags));
+    if (out_graph) {
+      TRY(st,
+          write_node(writer, out_graph, datatype, lang, FIELD_GRAPH, flags));
       TRY(st, write_sep(writer, SEP_GRAPH_BEGIN));
-      copy_node(&writer->context.graph, graph);
+      copy_node(&writer->context.graph, out_graph);
     }
   }
-
-  SERD_RESTORE_WARNINGS
 
   if ((flags & SERD_LIST_CONT)) {
     // Continue a list
@@ -1002,11 +999,6 @@ serd_writer_write_statement(SerdWriter* const     writer,
 
     } else {
       // Elide S (write P and O)
-
-      if (writer->context.comma_indented) {
-        --writer->indent;
-        writer->context.comma_indented = false;
-      }
 
       const bool first = !writer->context.predicate.type;
       TRY(st, write_sep(writer, first ? SEP_S_P : SEP_END_P));
@@ -1052,7 +1044,7 @@ serd_writer_write_statement(SerdWriter* const     writer,
     const bool is_list = (flags & SERD_LIST_S_BEGIN);
     push_context(writer,
                  is_list ? CTX_LIST : CTX_BLANK,
-                 serd_node_copy(graph),
+                 serd_node_copy(out_graph),
                  serd_node_copy(subject),
                  is_list ? SERD_NODE_NULL : serd_node_copy(predicate));
   }
@@ -1061,7 +1053,7 @@ serd_writer_write_statement(SerdWriter* const     writer,
     // Push context for anonymous or list object if necessary
     push_context(writer,
                  (flags & SERD_LIST_O_BEGIN) ? CTX_LIST : CTX_BLANK,
-                 serd_node_copy(graph),
+                 serd_node_copy(out_graph),
                  serd_node_copy(object),
                  SERD_NODE_NULL);
   }
@@ -1089,14 +1081,11 @@ serd_writer_end_anon(SerdWriter* const writer, const SerdNode* const node)
   TRY(st, write_sep(writer, SEP_ANON_END));
   pop_context(writer);
 
-  SERD_DISABLE_NULL_WARNINGS
-
   if (node && serd_node_equals(node, &writer->context.subject)) {
     // Now-finished anonymous node is the new subject with no other context
     writer->context.predicate.type = SERD_NOTHING;
   }
 
-  SERD_RESTORE_WARNINGS
   return st;
 }
 
@@ -1123,8 +1112,7 @@ serd_writer_new(const SerdSyntax     syntax,
   assert(env);
   assert(ssink);
 
-  const WriteContext context = WRITE_CONTEXT_NULL;
-  SerdWriter*        writer  = (SerdWriter*)calloc(1, sizeof(SerdWriter));
+  SerdWriter* writer = (SerdWriter*)calloc(1, sizeof(SerdWriter));
 
   writer->syntax     = syntax;
   writer->style      = style;
@@ -1133,7 +1121,6 @@ serd_writer_new(const SerdSyntax     syntax,
   writer->root_uri   = SERD_URI_NULL;
   writer->base_uri   = base_uri ? *base_uri : SERD_URI_NULL;
   writer->anon_stack = serd_stack_new(SERD_PAGE_SIZE);
-  writer->context    = context;
   writer->byte_sink  = serd_byte_sink_new(
     ssink, stream, (style & SERD_STYLE_BULK) ? SERD_PAGE_SIZE : 1);
 
@@ -1225,7 +1212,12 @@ serd_writer_set_prefix(SerdWriter* const     writer,
   TRY(st, serd_env_set_prefix(writer->env, name, uri));
 
   if (writer->syntax == SERD_TURTLE || writer->syntax == SERD_TRIG) {
+    const bool had_subject = writer->context.subject.type;
     TRY(st, terminate_context(writer));
+    if (had_subject) {
+      TRY(st, esink("\n", 1, writer));
+    }
+
     TRY(st, esink("@prefix ", 8, writer));
     TRY(st, esink(name->buf, name->n_bytes, writer));
     TRY(st, esink(": <", 3, writer));
@@ -1244,9 +1236,7 @@ serd_writer_free(SerdWriter* const writer)
     return;
   }
 
-  SERD_DISABLE_NULL_WARNINGS
   serd_writer_finish(writer);
-  SERD_RESTORE_WARNINGS
   free_context(&writer->context);
   free_anon_stack(writer);
   serd_stack_free(&writer->anon_stack);
