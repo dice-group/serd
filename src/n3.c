@@ -925,6 +925,7 @@ read_verb(SerdReader* const reader, Ref* const dest)
 
   if (st) {
     pop_node(reader, p);
+    *dest = 0;
     return r_err(reader, st, "bad verb\n");
   }
 
@@ -1314,7 +1315,10 @@ read_collection(SerdReader* const reader, ReadContext ctx, Ref* const dest)
     // _:node rdf:rest _:rest
     *ctx.flags |= SERD_LIST_CONT;
     ctx.predicate = reader->rdf_rest;
-    TRY(st, emit_statement(reader, ctx, (end ? reader->rdf_nil : rest), 0, 0));
+    st = emit_statement(reader, ctx, (end ? reader->rdf_nil : rest), 0, 0);
+    if (st) {
+      break;
+    }
 
     ctx.subject = rest;        // _:node = _:rest
     rest        = node;        // _:rest = (old)_:node
