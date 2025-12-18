@@ -103,12 +103,12 @@ serd_uri_string_has_scheme(const uint8_t* utf8)
   }
 
   for (uint8_t c = 0; (c = *++utf8) != '\0';) {
-    if (!is_uri_scheme_char(c)) {
-      return false;
-    }
-
     if (c == ':') {
       return true; // End of scheme
+    }
+
+    if (!is_scheme(c)) {
+      return false;
     }
   }
 
@@ -342,7 +342,7 @@ serd_uri_resolve(const SerdURI* const r,
   }
 }
 
-/** Write the path of `uri` starting at index `i` */
+/// Write the path of `uri` starting at index `i`
 static size_t
 write_path_tail(const SerdSink       sink,
                 void* const          stream,
@@ -370,7 +370,7 @@ write_path_tail(const SerdSink       sink,
   SERD_RESTORE_WARNINGS
 }
 
-/** Write the path of `uri` relative to the path of `base`. */
+/// Write the path of `uri` relative to the path of `base`
 static size_t
 write_rel_path(const SerdSink       sink,
                void* const          stream,

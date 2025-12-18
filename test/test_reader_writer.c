@@ -3,6 +3,8 @@
 
 #undef NDEBUG
 
+#include "expect_string.h"
+
 #include <serd/serd.h>
 
 #ifdef _WIN32
@@ -144,7 +146,7 @@ static void
 test_write_errors(void)
 {
   // Syntax-keyed array of output document sizes
-  static const size_t max_offsets[] = {0, 452, 1911, 2003, 466};
+  static const size_t max_offsets[] = {0, 443, 1911, 2003, 457};
 
   for (unsigned s = 1; s <= (unsigned)SERD_TRIG; ++s) {
     const SerdSyntax syntax = (SerdSyntax)s;
@@ -281,7 +283,7 @@ test_reader(const char* const path)
   assert(!st);
   assert(rt->n_statement == 12);
   assert(rt->graph && rt->graph->buf &&
-         !strcmp((const char*)rt->graph->buf, "http://example.org/"));
+         expect_string((const char*)rt->graph->buf, "http://example.org/"));
 
   assert(serd_reader_read_string(reader, USTR("This isn't Turtle at all.")));
 

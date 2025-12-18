@@ -4,8 +4,6 @@
 #ifndef SERD_SRC_URI_UTILS_H
 #define SERD_SRC_URI_UTILS_H
 
-#include "string_utils.h"
-
 #include <serd/serd.h>
 
 #include <stdbool.h>
@@ -82,27 +80,20 @@ uri_rooted_index(const SerdURI* const uri, const SerdURI* const root)
   return indexes;
 }
 
-/** Return true iff `uri` shares path components with `root` */
+/// Return true iff `uri` shares path components with `root`
 static inline SERD_PURE_FUNC bool
 uri_is_related(const SerdURI* const uri, const SerdURI* const root)
 {
   return uri_rooted_index(uri, root).shared != SIZE_MAX;
 }
 
-/** Return true iff `uri` is within the base of `root` */
+/// Return true iff `uri` is within the base of `root`
 static inline SERD_PURE_FUNC bool
 uri_is_under(const SerdURI* const uri, const SerdURI* const root)
 {
   const SlashIndexes indexes = uri_rooted_index(uri, root);
   return indexes.shared && indexes.shared != SIZE_MAX &&
          indexes.shared == indexes.root;
-}
-
-static inline bool
-is_uri_scheme_char(const int c)
-{
-  return c == '+' || c == '-' || c == '.' || c == ':' || is_alpha(c) ||
-         is_digit(c);
 }
 
 #endif // SERD_SRC_URI_UTILS_H
