@@ -70,7 +70,7 @@ typedef enum {
 
 typedef struct {
   char    sep;        ///< Sep character
-  int     indent : 4; ///< Indent delta
+  int8_t  indent : 4; ///< Indent delta
   uint8_t flags : 4;  ///< Whitespace flags
 } SepRule;
 
