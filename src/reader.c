@@ -476,3 +476,15 @@ serd_reader_read_string(SerdReader* const reader, const uint8_t* const utf8)
 
   return st;
 }
+
+uint64_t
+serd_reader_get_current_line(const SerdReader* const reader)
+{
+  return reader->source.cur.line;
+}
+
+uint64_t
+serd_reader_get_current_col(const SerdReader* const reader)
+{
+  return reader->source.cur.col;
+}

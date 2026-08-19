@@ -6,6 +6,7 @@
 
 #include <serd/serd.h>
 
+#include <inttypes.h>
 #include <stdio.h>
 
 #define NS_XSD "http://www.w3.org/2001/XMLSchema#"
@@ -27,7 +28,11 @@ serd_error(const SerdErrorSink    error_sink,
   if (error_sink) {
     error_sink(handle, e);
   } else {
-    fprintf(stderr, "error: %s:%u:%u: ", e->filename, e->line, e->col);
+    fprintf(stderr,
+            "error: %s:%" PRIu64 ":%" PRIu64 ": ",
+            (const char*)e->filename,
+            e->line,
+            e->col);
     vfprintf(stderr, e->fmt, *e->args);
   }
 }

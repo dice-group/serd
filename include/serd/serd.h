@@ -536,8 +536,8 @@ typedef uint32_t SerdStatementFlags;
 typedef struct {
   SerdStatus                   status;   ///< Error code
   const uint8_t* SERD_NULLABLE filename; ///< File with error
-  unsigned                     line;     ///< Line in file with error or 0
-  unsigned                     col;      ///< Column in file with error
+  uint64_t                     line;     ///< Line in file with error or 0
+  uint64_t                     col;      ///< Column in file with error
   const char* SERD_NONNULL     fmt;      ///< Printf-style format string
   va_list* SERD_NONNULL        args;     ///< Arguments for fmt
 } SerdError;
@@ -819,6 +819,12 @@ serd_reader_read_string(SerdReader* SERD_NONNULL    reader,
 */
 SERD_API SerdStatus
 serd_reader_skip_until_byte(SerdReader* SERD_NONNULL reader, uint8_t byte);
+
+SERD_PURE_API uint64_t
+serd_reader_get_current_line(const SerdReader* SERD_NONNULL reader);
+
+SERD_PURE_API uint64_t
+serd_reader_get_current_col(const SerdReader* SERD_NONNULL reader);
 
 /// Free `reader`
 SERD_API void
